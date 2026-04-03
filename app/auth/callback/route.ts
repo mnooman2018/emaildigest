@@ -1,26 +1,31 @@
-// app/auth/callback/route.ts
-import { createClient } from '../../../utils/supabase/server';
-import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+import { NextResponse } from 'next/server'
 
-export async function GET(request: NextRequest) {
-  const supabase = await createClient();
-  const { data: { session }, error } = await supabase.auth.getSession();
+export async function GET(request: Request) {
+  const { searchParams, origin } = new URL(request.url)
+  const code = searchParams.get('code')
 
-  if (error || !session?.provider_token || !session?.provider_refresh_token) {
-    console.error("OAuth callback error:", error);
-    return NextResponse.redirect(new URL('/', request.url));
+  if (code) {
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          },
+        },
+      }
+    )
+    await supabase.auth.exchangeCodeForSession(code)
   }
 
-  const { error: insertError } = await supabase.from('gmail_connections').upsert({
-    user_id: session.user.id,
-    refresh_token: session.provider_refresh_token,
-    access_token: session.provider_token,
-    expires_at: new Date(Date.now() + 3600 * 1000),
-  });
-
-  if (insertError) {
-    console.error("Failed to save tokens:", insertError);
-  }
-
-  return NextResponse.redirect(new URL('/', request.url));
+  return NextResponse.redirect(`${origin}/dashboard`)
 }
