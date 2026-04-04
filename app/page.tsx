@@ -13,21 +13,8 @@ export default async function Home() {
       .single();
 
     if (conn) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="text-center max-w-md px-6">
-            <div className="text-6xl mb-6">✅</div>
-            <h1 className="text-4xl font-bold mb-4">Gmail Connected Successfully</h1>
-            <p className="text-xl text-gray-600 mb-8">
-              Your EmailDigest is now active!<br />
-              Daily AI summaries will be sent to your inbox automatically.
-            </p>
-            <p className="text-sm text-gray-500">
-              No dashboard needed • Everything runs in the background
-            </p>
-          </div>
-        </div>
-      );
+      // Already connected — go straight to dashboard
+      redirect('/dashboard');
     }
   }
 
@@ -47,18 +34,17 @@ export default async function Home() {
     });
 
     if (data?.url) {
-      redirect(data.url); // ← this was the missing piece
+      redirect(data.url);
     }
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-50 to-indigo-100">
       <div className="text-center max-w-md px-6">
-        <h1 className="text-6xl font-bold mb-4 tracking-tight">EmailDigest</h1>
+        <h1 className="text-6xl font-bold mb-4 tracking-tight text-black">EmailDigest</h1>
         <p className="text-2xl text-gray-700 mb-10">
           Turn your Gmail into daily actionable insights with AI
         </p>
-
         <form action={handleGoogleLogin}>
           <button
             type="submit"
@@ -67,7 +53,6 @@ export default async function Home() {
             🔗 Connect with Google
           </button>
         </form>
-
         <p className="text-xs text-gray-500 mt-8">
           We only read your emails — never send or delete anything
         </p>

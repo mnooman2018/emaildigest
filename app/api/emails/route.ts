@@ -3,31 +3,54 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { google } from 'googleapis'
 import { groq } from '@ai-sdk/groq'
-import { generateObject } from 'ai'
-import { z } from 'zod'
-
-const EmailSummarySchema = z.object({
-  summary: z.string(),
-  importance_score: z.number().min(1).max(10),
-  priority: z.enum(['high', 'medium', 'low']),
-  action_required: z.boolean(),
-  category: z.enum(['meeting', 'task', 'promo', 'personal', 'other']),
-})
+import { generateText } from 'ai'
 
 async function summarizeEmail(subject: string, from: string, body: string) {
   try {
-    const { object } = await generateObject({
+    const cleanBody = body
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 1500)
+
+    const { text } = await generateText({
       model: groq('llama-3.3-70b-versatile'),
-      schema: EmailSummarySchema,
-      prompt: `Analyze this email and give importance score 1-10 (10 = most important):
+      prompt: `Analyze this email and respond with ONLY a JSON object, no other text.
+
+CATEGORY RULES:
+- "promo" = company/brand/noreply sender, marketing, deals, offers, newsletters, shopping, food delivery, travel, entertainment, job alerts
+- "meeting" = calendar invite, interview, meeting request, zoom/teams/meet link
+- "task" = deployment failure, error alert, action required, approval needed, deadline, bug report
+- "personal" = personal gmail address writing personally to you
+- "other" = nothing else fits
+
+IMPORTANCE: promo=1-3, personal=7-9, task=6-8, meeting=8-10
+PRIORITY: importance 1-3=low, 4-6=medium, 7-10=high
+
 Subject: ${subject}
 From: ${from}
-Body: ${body.slice(0, 1000)}`,
+Body: ${cleanBody}
+
+Respond with ONLY this JSON (no markdown, no explanation):
+{"summary":"...","importance_score":5,"priority":"medium","action_required":false,"category":"other"}`,
     })
-    return object
-  } catch {
+
+    const cleaned = text.replace(/```json|```/g, '').trim()
+    const parsed = JSON.parse(cleaned)
+
     return {
-      summary: body.slice(0, 150),
+      summary: String(parsed.summary || ''),
+      importance_score: Number(parsed.importance_score || 5),
+      priority: (parsed.priority as 'high' | 'medium' | 'low') || 'medium',
+      action_required: Boolean(parsed.action_required || false),
+      category: (parsed.category as 'meeting' | 'task' | 'promo' | 'personal' | 'other') || 'other',
+    }
+  } catch (err) {
+    console.error('AI FAILED for:', subject, err)
+    return {
+      summary: body.replace(/<[^>]*>/g, ' ').slice(0, 150),
       importance_score: 5,
       priority: 'medium' as const,
       action_required: false,
@@ -94,10 +117,13 @@ export async function GET() {
 
   const gmail = google.gmail({ version: 'v1', auth })
 
+  const today = new Date()
+  const dateStr = `${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`
+
   const response = await gmail.users.messages.list({
     userId: 'me',
-    maxResults: 20,
-    q: 'in:inbox is:unread',
+    maxResults: 50,
+    q: `in:inbox after:${dateStr}`,
   })
 
   const messages = response.data.messages || []
@@ -117,13 +143,17 @@ export async function GET() {
       const subject = get('Subject')
       const from = get('From')
       const date = get('Date')
+      const messageId = get('Message-ID')
       const body = extractBody(detail.data.payload)
       const snippet = detail.data.snippet || ''
+      const threadId = detail.data.threadId || ''
 
       const ai = await summarizeEmail(subject, from, body || snippet)
 
       return {
         id: msg.id,
+        threadId,
+        messageId,
         subject: subject || '(No subject)',
         from,
         date,
@@ -134,9 +164,9 @@ export async function GET() {
     })
   )
 
-  const top5 = emails
+  const top10 = emails
     .sort((a, b) => b.importance_score - a.importance_score)
-    .slice(0, 5)
+    .slice(0, 10)
 
-  return NextResponse.json({ emails: top5 })
+  return NextResponse.json({ emails: top10 })
 }
