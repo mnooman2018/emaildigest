@@ -24,8 +24,23 @@ export async function GET(request: Request) {
         },
       }
     )
-    await supabase.auth.exchangeCodeForSession(code)
+
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+
+    if (!error) {
+      const { data: { session } } = await supabase.auth.getSession()
+
+      if (session) {
+        await supabase.from('gmail_connections').upsert({
+          user_id: session.user.id,
+          access_token: session.provider_token,
+          refresh_token: session.provider_refresh_token,
+        }, { onConflict: 'user_id' })
+      }
+
+      return NextResponse.redirect(`${origin}/`)
+    }
   }
 
-  return NextResponse.redirect(`${origin}/dashboard`)
+  return NextResponse.redirect(`${origin}/?error=auth`)
 }
