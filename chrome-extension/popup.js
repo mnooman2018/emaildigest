@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:3000'
+const API_URL = 'https://emaildigest-kappa.vercel.app'
 
 async function checkAndRedirect() {
   document.getElementById('emoji').textContent = '⏳'

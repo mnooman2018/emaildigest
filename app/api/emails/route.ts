@@ -5,6 +5,16 @@ import { google } from 'googleapis'
 import { groq } from '@ai-sdk/groq'
 import { generateText } from 'ai'
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+}
+
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders })
+}
+
 async function summarizeEmail(subject: string, from: string, body: string) {
   try {
     const cleanBody = body
@@ -114,7 +124,7 @@ export async function GET() {
 
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401, headers: corsHeaders })
   }
 
   const { data: conn } = await supabase
@@ -124,7 +134,7 @@ export async function GET() {
     .single()
 
   if (!conn) {
-    return NextResponse.json({ error: 'Gmail not connected' }, { status: 401 })
+    return NextResponse.json({ error: 'Gmail not connected' }, { status: 401, headers: corsHeaders })
   }
 
   const auth = new google.auth.OAuth2(
@@ -138,7 +148,6 @@ export async function GET() {
 
   const gmail = google.gmail({ version: 'v1', auth })
 
-  // Get start of today in IST as Unix timestamp
   const today = new Date()
   const istOffset = 5.5 * 60 * 60 * 1000
   const istDate = new Date(today.getTime() + istOffset)
@@ -203,5 +212,5 @@ export async function GET() {
     .sort((a, b) => b.importance_score - a.importance_score)
     .slice(0, 10)
 
-  return NextResponse.json({ emails: top10 })
+  return NextResponse.json({ emails: top10 }, { headers: corsHeaders })
 }
