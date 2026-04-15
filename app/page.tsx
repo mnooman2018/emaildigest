@@ -13,7 +13,6 @@ export default async function Home() {
       .single();
 
     if (conn) {
-      // Already connected — go straight to dashboard
       redirect('/dashboard');
     }
   }
@@ -39,24 +38,77 @@ export default async function Home() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-50 to-indigo-100">
-      <div className="text-center max-w-md px-6">
-        <h1 className="text-6xl font-bold mb-4 tracking-tight text-black">EmailDigest</h1>
-        <p className="text-2xl text-gray-700 mb-10">
-          Turn your Gmail into daily actionable insights with AI
+    <main style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'linear-gradient(135deg, #e8e0f5 0%, #f5e6f0 40%, #fde8d8 100%)',
+      fontFamily: "'Georgia', serif",
+    }}>
+      <div style={{
+        textAlign: 'center',
+        maxWidth: '560px',
+        padding: '0 2rem',
+      }}>
+        {/* Title */}
+        <h1 style={{
+          fontSize: '4rem',
+          fontWeight: '700',
+          color: '#1e2a3a',
+          margin: '0 0 1rem',
+          letterSpacing: '-0.02em',
+          lineHeight: '1.1',
+        }}>
+          EmailDigest
+        </h1>
+
+        {/* Subtitle */}
+        <p style={{
+          fontSize: '1.25rem',
+          color: '#6b7a8d',
+          margin: '0 0 2.5rem',
+          lineHeight: '1.6',
+          fontWeight: '400',
+        }}>
+          Turn your Gmail into daily actionable<br />insights with AI
         </p>
+
+        {/* Button */}
         <form action={handleGoogleLogin}>
           <button
             type="submit"
-            className="bg-[#4285F4] hover:bg-[#3367D6] text-white px-10 py-4 rounded-2xl text-lg font-medium flex items-center gap-3 mx-auto shadow-lg transition-all"
+            style={{
+              background: 'linear-gradient(135deg, #6b7fd4 0%, #8b6fc4 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '16px',
+              padding: '1rem 2.5rem',
+              fontSize: '1.1rem',
+              fontWeight: '500',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.6rem',
+              boxShadow: '0 8px 32px rgba(107, 127, 212, 0.35)',
+              transition: 'all 0.2s ease',
+              letterSpacing: '0.01em',
+            }}
           >
             🔗 Connect with Google
           </button>
         </form>
-        <p className="text-xs text-gray-500 mt-8">
+
+        {/* Privacy note */}
+        <p style={{
+          marginTop: '1.25rem',
+          fontSize: '0.8rem',
+          color: '#9aa5b4',
+          letterSpacing: '0.01em',
+        }}>
           We only read your emails — never send or delete anything
         </p>
       </div>
-    </div>
+    </main>
   );
 }

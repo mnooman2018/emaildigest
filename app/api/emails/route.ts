@@ -60,19 +60,40 @@ Respond with ONLY this JSON (no markdown, no explanation):
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractBody(payload: any): string {
-  if (!payload) return ''
+function extractBody(payload: any): { text: string; html: string } {
+  if (!payload) return { text: '', html: '' }
+
+  let html = ''
+  let text = ''
+
   if (payload.body?.data) {
-    return Buffer.from(payload.body.data, 'base64').toString('utf-8')
+    const decoded = Buffer.from(payload.body.data, 'base64').toString('utf-8')
+    if (payload.mimeType === 'text/html') html = decoded
+    else text = decoded
   }
+
   if (payload.parts) {
     for (const part of payload.parts) {
+      if (part.mimeType === 'text/html' && part.body?.data) {
+        html = Buffer.from(part.body.data, 'base64').toString('utf-8')
+      }
       if (part.mimeType === 'text/plain' && part.body?.data) {
-        return Buffer.from(part.body.data, 'base64').toString('utf-8')
+        text = Buffer.from(part.body.data, 'base64').toString('utf-8')
+      }
+      if (part.parts) {
+        for (const subpart of part.parts) {
+          if (subpart.mimeType === 'text/html' && subpart.body?.data) {
+            html = Buffer.from(subpart.body.data, 'base64').toString('utf-8')
+          }
+          if (subpart.mimeType === 'text/plain' && subpart.body?.data) {
+            text = Buffer.from(subpart.body.data, 'base64').toString('utf-8')
+          }
+        }
       }
     }
   }
-  return ''
+
+  return { text, html }
 }
 
 export async function GET() {
@@ -117,14 +138,27 @@ export async function GET() {
 
   const gmail = google.gmail({ version: 'v1', auth })
 
+  // Get start of today in IST as Unix timestamp
   const today = new Date()
-  const dateStr = `${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`
+  const istOffset = 5.5 * 60 * 60 * 1000
+  const istDate = new Date(today.getTime() + istOffset)
+  const startOfDayIST = new Date(Date.UTC(
+    istDate.getUTCFullYear(),
+    istDate.getUTCMonth(),
+    istDate.getUTCDate(),
+    0, 0, 0
+  ) - istOffset)
+  const unixTimestamp = Math.floor(startOfDayIST.getTime() / 1000)
+
+  console.log('Gmail query:', `in:inbox after:${unixTimestamp}`, '=', new Date(unixTimestamp * 1000).toISOString())
 
   const response = await gmail.users.messages.list({
     userId: 'me',
     maxResults: 50,
-    q: `in:inbox after:${dateStr}`,
+    q: `in:inbox after:${unixTimestamp}`,
   })
+
+  console.log('Messages found:', response.data.messages?.length || 0)
 
   const messages = response.data.messages || []
 
@@ -144,11 +178,11 @@ export async function GET() {
       const from = get('From')
       const date = get('Date')
       const messageId = get('Message-ID')
-      const body = extractBody(detail.data.payload)
+      const { text, html } = extractBody(detail.data.payload)
       const snippet = detail.data.snippet || ''
       const threadId = detail.data.threadId || ''
 
-      const ai = await summarizeEmail(subject, from, body || snippet)
+      const ai = await summarizeEmail(subject, from, text || snippet)
 
       return {
         id: msg.id,
@@ -158,7 +192,8 @@ export async function GET() {
         from,
         date,
         snippet,
-        body: body || snippet,
+        body: text || snippet,
+        html: html || '',
         ...ai,
       }
     })
