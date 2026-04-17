@@ -143,7 +143,7 @@ export default function Dashboard() {
         boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-  <svg width="160" height="36" viewBox="0 0 680 160" role="img">
+  <svg width="200" height="45" viewBox="0 0 680 160" role="img">
     <defs>
       <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stopColor="#6366f1"/>
