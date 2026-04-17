@@ -53,7 +53,7 @@ export default async function Home() {
       }}>
         {/* Title */}
         <h1 style={{
-          fontSize: '4rem',
+          fontSize: '2rem',
           fontWeight: '700',
           color: '#1e2a3a',
           margin: '0 0 1rem',
@@ -65,7 +65,7 @@ export default async function Home() {
 
         {/* Subtitle */}
         <p style={{
-          fontSize: '1.25rem',
+          fontSize: '0.9rem',
           color: '#6b7a8d',
           margin: '0 0 2.5rem',
           lineHeight: '1.6',
