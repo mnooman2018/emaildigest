@@ -38,20 +38,8 @@ export async function GET(request: Request) {
 
       // If opened from extension popup, close window automatically
       if (isPopup) {
-        return new NextResponse(`
-          <html>
-            <body>
-              <script>
-                window.opener && window.opener.postMessage('emaildigest-login-success', '*');
-                window.close();
-              </script>
-              <p>Login successful! Closing window...</p>
-            </body>
-          </html>
-        `, {
-          headers: { 'Content-Type': 'text/html' }
-        })
-      }
+  return NextResponse.redirect(`${origin}/extension-auth`)
+}
 
       return NextResponse.redirect(`${origin}/`)
     }

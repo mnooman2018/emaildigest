@@ -4,10 +4,21 @@ let panelOpen = false
 let isMaximized = false
 let emailsData = []
 let activeCategory = 'all'
+let authToken = null
 
 const categoryEmoji = { meeting: '📅', task: '✅', promo: '🏷️', personal: '👤', other: '📧' }
 const categoryColor = { meeting: '#2563eb', task: '#7c3aed', promo: '#d97706', personal: '#db2777', other: '#475569' }
 const priorityColor = { high: '#dc2626', medium: '#d97706', low: '#16a34a' }
+
+// Listen for token from popup
+window.addEventListener('message', (e) => {
+  if (e.data?.type === 'emaildigest-token') {
+    authToken = e.data.token
+    chrome.storage.local.set({ ed_token: authToken, ed_email: e.data.email })
+    emailsData = []
+    loadEmails()
+  }
+})
 
 function envelopeIcon() {
   return `<svg width="24" height="24" viewBox="0 0 100 70" xmlns="http://www.w3.org/2000/svg">
@@ -52,35 +63,33 @@ function showLoginScreen() {
         <div style="font-size:2rem;margin-bottom:1rem;">⏳</div>
         <p style="font-size:0.85rem;font-weight:500;color:#1e293b;">Connecting to Google...</p>
         <p style="font-size:0.72rem;margin-top:0.5rem;color:#94a3b8;line-height:1.6;">
-          Please complete login in the popup window.<br>It will close automatically when done.
+          Please complete login in the popup.<br>It will close automatically when done.
         </p>
       </div>
     `
 
-    // Listen for success message from popup
-    window.addEventListener('message', function onMessage(e) {
-      if (e.data === 'emaildigest-login-success') {
-        window.removeEventListener('message', onMessage)
-        emailsData = []
-        loadEmails()
-      }
-    })
-
-    // Open login popup
     const loginWin = window.open(
-  SITE_URL + '/popup',
+      `${SITE_URL}/popup`,
       'emaildigest-login',
-      'width=480,height=580,left=400,top=80,toolbar=no,menubar=no,scrollbars=yes'
+      'width=480,height=580,left=400,top=80,toolbar=no,menubar=no'
     )
 
-    // Fallback: if popup closes without message
     const checkClosed = setInterval(() => {
       if (loginWin && loginWin.closed) {
         clearInterval(checkClosed)
-        emailsData = []
-        loadEmails()
+        if (!authToken) {
+          chrome.storage.local.get(['ed_token'], (result) => {
+            if (result.ed_token) {
+              authToken = result.ed_token
+              emailsData = []
+              loadEmails()
+            } else {
+              showLoginScreen()
+            }
+          })
+        }
       }
-    }, 800)
+    }, 500)
   })
 }
 
@@ -162,6 +171,18 @@ async function loadEmails() {
   const contentEl = document.getElementById('ed-content')
   if (!contentEl) return
 
+  if (!authToken) {
+    const stored = await new Promise(resolve => {
+      chrome.storage.local.get(['ed_token'], result => resolve(result))
+    })
+    if (stored.ed_token) {
+      authToken = stored.ed_token
+    } else {
+      showLoginScreen()
+      return
+    }
+  }
+
   contentEl.innerHTML = `
     <div style="text-align:center;padding:2rem;color:#64748b;">
       <div style="font-size:2rem;margin-bottom:0.5rem;">🤖</div>
@@ -170,9 +191,13 @@ async function loadEmails() {
     </div>`
 
   try {
-    const res = await fetch(`${SITE_URL}/api/emails`, { credentials: 'include' })
+    const res = await fetch(`${SITE_URL}/api/emails`, {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    })
 
     if (res.status === 401) {
+      authToken = null
+      chrome.storage.local.remove(['ed_token'])
       showLoginScreen()
       return
     }
@@ -192,6 +217,8 @@ async function loadEmails() {
     renderEmails()
 
   } catch (err) {
+    authToken = null
+    chrome.storage.local.remove(['ed_token'])
     showLoginScreen()
   }
 }

@@ -106,7 +106,7 @@ function extractBody(payload: any): { text: string; html: string } {
   return { text, html }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const cookieStore = await cookies()
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -122,10 +122,21 @@ export async function GET() {
     }
   )
 
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401, headers: corsHeaders })
-  }
+  const authHeader = request.headers.get('Authorization')
+const bearerToken = authHeader?.replace('Bearer ', '')
+
+let session = null
+if (bearerToken) {
+  const { data: { user } } = await supabase.auth.getUser(bearerToken)
+  if (user) session = { user, provider_token: null }
+} else {
+  const { data } = await supabase.auth.getSession()
+  session = data.session
+}
+
+if (!session) {
+  return NextResponse.json({ error: 'Not authenticated' }, { status: 401, headers: corsHeaders })
+}
 
   const { data: conn } = await supabase
     .from('gmail_connections')
