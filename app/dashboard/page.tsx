@@ -23,9 +23,9 @@ interface Email {
 }
 
 const priorityColor = {
-  high: '#ef4444',
-  medium: '#f59e0b',
-  low: '#22c55e',
+  high: '#dc2626',
+  medium: '#d97706',
+  low: '#16a34a',
 }
 
 const categoryEmoji = {
@@ -37,11 +37,11 @@ const categoryEmoji = {
 }
 
 const categoryColor = {
-  meeting: '#3b82f6',
-  task: '#8b5cf6',
-  promo: '#f59e0b',
-  personal: '#ec4899',
-  other: '#64748b',
+  meeting: '#2563eb',
+  task: '#7c3aed',
+  promo: '#d97706',
+  personal: '#db2777',
+  other: '#475569',
 }
 
 const CATEGORY_ORDER = ['meeting', 'task', 'personal', 'promo', 'other']
@@ -118,9 +118,7 @@ export default function Dashboard() {
   if (loading) return (
     <div style={{
       display: 'flex', justifyContent: 'center', alignItems: 'center',
-      height: '100vh',
-      background: 'linear-gradient(135deg, #1a0a2e 0%, #2d1b4e 50%, #1a0a1e 100%)',
-      color: 'white'
+      height: '100vh', background: '#f8fafc', color: '#1e293b'
     }}>
       Loading...
     </div>
@@ -129,32 +127,32 @@ export default function Dashboard() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #1a0a2e 0%, #2d1b4e 50%, #3d1020 100%)',
-      color: 'white',
+      background: '#f8fafc',
+      color: '#1e293b',
       fontFamily: 'Georgia, serif',
     }}>
 
       {/* Header */}
       <div style={{
-        padding: '1.25rem 2rem',
-        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        padding: '1rem 2rem',
+        borderBottom: '1px solid #e2e8f0',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        backdropFilter: 'blur(10px)',
-        background: 'rgba(0,0,0,0.2)',
+        background: '#ffffff',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
           <span style={{ fontSize: '1.3rem' }}>✉️</span>
-          <h1 style={{ margin: 0, fontSize: '1.3rem', fontWeight: '600', color: '#e2d9f3' }}>
+          <h1 style={{ margin: 0, fontSize: '1.3rem', fontWeight: '700', color: '#1e293b' }}>
             EmailDigest
           </h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <span style={{ color: '#9b8fc0', fontSize: '0.85rem' }}>{user?.email}</span>
+          <span style={{ color: '#64748b', fontSize: '0.85rem' }}>{user?.email}</span>
           <button onClick={handleLogout} style={{
             padding: '0.4rem 1.2rem',
-            background: 'linear-gradient(135deg, #c0392b, #e74c3c)',
+            background: '#ef4444',
             color: 'white', border: 'none',
             borderRadius: '8px', cursor: 'pointer',
             fontSize: '0.85rem', fontWeight: '500',
@@ -169,37 +167,38 @@ export default function Dashboard() {
 
         {/* LEFT SIDEBAR */}
         <div style={{
-          width: '320px', flexShrink: 0,
-          background: 'rgba(255,255,255,0.04)',
-          borderRadius: '16px',
-          border: '1px solid rgba(255,255,255,0.08)',
+          width: '300px', flexShrink: 0,
+          background: '#ffffff',
+          borderRadius: '12px',
+          border: '1px solid #e2e8f0',
           padding: '1.25rem',
           height: 'fit-content',
           position: 'sticky',
           top: '1rem',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
         }}>
-          <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', color: '#e2d9f3', fontWeight: '700' }}>
+          <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', color: '#1e293b', fontWeight: '700' }}>
             📊 Priority Table
           </h3>
 
           {urgentEmails.length > 0 && (
             <div style={{
-              background: 'rgba(239, 68, 68, 0.15)',
-              border: '1px solid rgba(239, 68, 68, 0.4)',
+              background: '#fef2f2',
+              border: '1px solid #fecaca',
               borderRadius: '10px',
               padding: '0.75rem',
               marginBottom: '1rem',
             }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#ef4444', marginBottom: '0.5rem' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#dc2626', marginBottom: '0.5rem' }}>
                 🚨 URGENT ACTION NEEDED
               </div>
               {urgentEmails.map(e => (
                 <div key={e.id}
                   onClick={() => setSummaryEmail(e)}
                   style={{
-                    fontSize: '0.75rem', color: '#fca5a5',
+                    fontSize: '0.75rem', color: '#b91c1c',
                     padding: '0.25rem 0',
-                    borderBottom: '1px solid rgba(239,68,68,0.15)',
+                    borderBottom: '1px solid #fecaca',
                     cursor: 'pointer',
                   }}
                 >
@@ -215,11 +214,14 @@ export default function Dashboard() {
                 key={email.id}
                 onClick={() => setSummaryEmail(email)}
                 style={{
-                  background: 'rgba(255,255,255,0.04)',
+                  background: '#f8fafc',
                   borderRadius: '8px',
                   padding: '0.6rem 0.75rem',
                   cursor: 'pointer',
                   borderLeft: `3px solid ${categoryColor[email.category]}`,
+                  border: '1px solid #e2e8f0',
+                  borderLeftWidth: '3px',
+                  borderLeftColor: categoryColor[email.category],
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.2rem' }}>
@@ -228,7 +230,7 @@ export default function Dashboard() {
                   </span>
                   <span style={{
                     fontSize: '0.7rem',
-                    background: priorityColor[email.priority] + '33',
+                    background: priorityColor[email.priority] + '18',
                     color: priorityColor[email.priority],
                     padding: '0.1rem 0.4rem',
                     borderRadius: '4px',
@@ -237,10 +239,10 @@ export default function Dashboard() {
                     {email.importance_score}/10
                   </span>
                 </div>
-                <div style={{ fontSize: '0.78rem', color: '#e2d9f3', fontWeight: '500', marginBottom: '0.2rem' }}>
+                <div style={{ fontSize: '0.78rem', color: '#1e293b', fontWeight: '500', marginBottom: '0.2rem' }}>
                   {email.subject.slice(0, 35)}{email.subject.length > 35 ? '...' : ''}
                 </div>
-                <div style={{ fontSize: '0.7rem', color: '#9b8fc0' }}>
+                <div style={{ fontSize: '0.7rem', color: '#64748b' }}>
                   {email.summary.slice(0, 60)}{email.summary.length > 60 ? '...' : ''}
                 </div>
               </div>
@@ -252,10 +254,10 @@ export default function Dashboard() {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
             <div>
-              <h2 style={{ margin: 0, fontSize: '1.6rem', fontWeight: '700', color: '#f0ebff' }}>
+              <h2 style={{ margin: 0, fontSize: '1.6rem', fontWeight: '700', color: '#1e293b' }}>
                 Today&apos;s Important Emails
               </h2>
-              <p style={{ margin: '0.3rem 0 0', color: '#9b8fc0', fontSize: '0.85rem' }}>
+              <p style={{ margin: '0.3rem 0 0', color: '#64748b', fontSize: '0.85rem' }}>
                 AI-ranked top 10 from today&apos;s inbox
               </p>
             </div>
@@ -264,11 +266,12 @@ export default function Dashboard() {
               disabled={emailsLoading}
               style={{
                 padding: '0.6rem 1.4rem',
-                background: 'rgba(139, 92, 246, 0.3)',
-                border: '1px solid rgba(139, 92, 246, 0.5)',
-                color: '#c4b5fd', borderRadius: '10px',
+                background: '#6366f1',
+                border: 'none',
+                color: 'white', borderRadius: '10px',
                 cursor: 'pointer', fontSize: '0.9rem',
                 display: 'flex', alignItems: 'center', gap: '0.4rem',
+                fontWeight: '500',
               }}
             >
               🔄 {emailsLoading ? 'Loading...' : 'Refresh'}
@@ -284,17 +287,14 @@ export default function Dashboard() {
                 style={{
                   padding: '0.4rem 1rem',
                   borderRadius: '20px',
-                  border: activeCategory === cat
-                    ? '1px solid rgba(139,92,246,0.8)'
-                    : '1px solid rgba(255,255,255,0.1)',
+                  border: activeCategory === cat ? 'none' : '1px solid #e2e8f0',
                   cursor: 'pointer',
                   fontSize: '0.8rem',
                   fontWeight: activeCategory === cat ? 'bold' : 'normal',
-                  background: activeCategory === cat
-                    ? 'rgba(139, 92, 246, 0.3)'
-                    : 'rgba(255,255,255,0.05)',
-                  color: activeCategory === cat ? '#c4b5fd' : '#9b8fc0',
+                  background: activeCategory === cat ? '#6366f1' : '#ffffff',
+                  color: activeCategory === cat ? 'white' : '#64748b',
                   transition: 'all 0.2s',
+                  boxShadow: activeCategory === cat ? '0 2px 8px rgba(99,102,241,0.3)' : 'none',
                 }}
               >
                 {cat === 'all' ? '📬' : categoryEmoji[cat as keyof typeof categoryEmoji]} {cat.charAt(0).toUpperCase() + cat.slice(1)} ({countByCategory(cat)})
@@ -304,52 +304,52 @@ export default function Dashboard() {
 
           {/* Email list */}
           {emailsLoading ? (
-            <div style={{ textAlign: 'center', padding: '4rem', color: '#9b8fc0' }}>
+            <div style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>
               <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🤖</div>
               <p style={{ fontSize: '1rem' }}>AI is reading and categorising your emails...</p>
               <p style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>This may take 20–40 seconds</p>
             </div>
           ) : filteredEmails.length === 0 ? (
-            <p style={{ color: '#9b8fc0', textAlign: 'center', padding: '3rem' }}>
+            <p style={{ color: '#64748b', textAlign: 'center', padding: '3rem' }}>
               {emails.length === 0 ? 'No emails found for today.' : `No ${activeCategory} emails today.`}
             </p>
           ) : (
             filteredEmails.map((email) => (
               <div key={email.id} style={{
-                background: 'rgba(255,255,255,0.05)',
-                borderRadius: '14px',
+                background: '#ffffff',
+                borderRadius: '12px',
                 padding: '1.25rem 1.5rem',
                 marginBottom: '1rem',
-                border: '1px solid rgba(255,255,255,0.08)',
+                border: '1px solid #e2e8f0',
                 borderLeft: `4px solid ${priorityColor[email.priority]}`,
-                backdropFilter: 'blur(10px)',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
               }}>
                 {(email.action_required || email.importance_score >= 8) && (
                   <div style={{
-                    background: 'rgba(239, 68, 68, 0.15)',
-                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    background: '#fef2f2',
+                    border: '1px solid #fecaca',
                     borderRadius: '6px',
                     padding: '0.3rem 0.75rem',
                     marginBottom: '0.75rem',
                     fontSize: '0.75rem',
-                    color: '#ef4444',
+                    color: '#dc2626',
                     fontWeight: 'bold',
                   }}>
                     🚨 Urgent Action Needed — {email.summary.slice(0, 80)}
                   </div>
                 )}
 
-                <div style={{ fontWeight: 'bold', fontSize: '1rem', color: '#f0ebff', marginBottom: '0.5rem' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '1rem', color: '#1e293b', marginBottom: '0.5rem' }}>
                   {categoryEmoji[email.category]} {email.subject}
                 </div>
 
-                <div style={{ color: '#9b8fc0', fontSize: '0.78rem', marginBottom: '0.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
+                <div style={{ color: '#64748b', fontSize: '0.78rem', marginBottom: '0.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
                   <span>From: {email.from}</span>
                   <span>·</span>
                   <span>{new Date(email.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                   <span style={{
                     padding: '0.1rem 0.5rem',
-                    background: categoryColor[email.category] + '33',
+                    background: categoryColor[email.category] + '15',
                     color: categoryColor[email.category],
                     borderRadius: '4px', fontSize: '0.72rem', fontWeight: 'bold'
                   }}>
@@ -358,25 +358,25 @@ export default function Dashboard() {
                   {email.priority !== 'low' && (
                     <span style={{
                       padding: '0.1rem 0.5rem',
-                      background: priorityColor[email.priority] + '33',
+                      background: priorityColor[email.priority] + '15',
                       color: priorityColor[email.priority],
                       borderRadius: '4px', fontSize: '0.72rem', fontWeight: 'bold'
                     }}>
                       {email.priority.toUpperCase()}
                     </span>
                   )}
-                  <span style={{ color: '#f59e0b', fontSize: '0.72rem' }}>
+                  <span style={{ color: '#d97706', fontSize: '0.72rem' }}>
                     ⭐ {email.importance_score}/10
                   </span>
                 </div>
 
                 <div style={{
-                  background: 'rgba(255,255,255,0.05)',
+                  background: '#f1f5f9',
                   borderRadius: '8px', padding: '0.6rem 1rem',
                   marginBottom: '0.75rem',
-                  fontSize: '0.88rem', color: '#c4b5fd', lineHeight: '1.5'
+                  fontSize: '0.88rem', color: '#475569', lineHeight: '1.5'
                 }}>
-                  <span style={{ color: '#8b5cf6', fontWeight: 'bold', fontSize: '0.72rem' }}>AI SUMMARY · </span>
+                  <span style={{ color: '#6366f1', fontWeight: 'bold', fontSize: '0.72rem' }}>AI SUMMARY · </span>
                   {email.summary}
                 </div>
 
@@ -385,10 +385,11 @@ export default function Dashboard() {
                     onClick={() => setSelectedEmail(email)}
                     style={{
                       padding: '0.4rem 1rem',
-                      background: 'rgba(255,255,255,0.08)',
-                      color: '#c4b5fd',
-                      border: '1px solid rgba(139,92,246,0.4)',
-                      borderRadius: '8px', cursor: 'pointer', fontSize: '0.82rem'
+                      background: '#f1f5f9',
+                      color: '#475569',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px', cursor: 'pointer', fontSize: '0.82rem',
+                      fontWeight: '500',
                     }}
                   >
                     👁️ View Email
@@ -397,10 +398,11 @@ export default function Dashboard() {
                     onClick={() => setSummaryEmail(email)}
                     style={{
                       padding: '0.4rem 1rem',
-                      background: 'rgba(139, 92, 246, 0.15)',
-                      color: '#c4b5fd',
-                      border: '1px solid rgba(139,92,246,0.4)',
-                      borderRadius: '8px', cursor: 'pointer', fontSize: '0.82rem'
+                      background: '#ede9fe',
+                      color: '#6366f1',
+                      border: '1px solid #c7d2fe',
+                      borderRadius: '8px', cursor: 'pointer', fontSize: '0.82rem',
+                      fontWeight: '500',
                     }}
                   >
                     📋 View Summary
@@ -409,10 +411,11 @@ export default function Dashboard() {
                     onClick={() => handleReply(email)}
                     style={{
                       padding: '0.4rem 1rem',
-                      background: 'rgba(139, 92, 246, 0.3)',
-                      color: '#c4b5fd',
-                      border: '1px solid rgba(139,92,246,0.5)',
-                      borderRadius: '8px', cursor: 'pointer', fontSize: '0.82rem'
+                      background: '#6366f1',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px', cursor: 'pointer', fontSize: '0.82rem',
+                      fontWeight: '500',
                     }}
                   >
                     ↩️ Reply in Gmail
@@ -430,55 +433,51 @@ export default function Dashboard() {
           onClick={() => setSelectedEmail(null)}
           style={{
             position: 'fixed', inset: 0,
-            background: 'rgba(0,0,0,0.75)',
+            background: 'rgba(0,0,0,0.4)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             zIndex: 50, padding: '1rem',
-            backdropFilter: 'blur(4px)',
           }}
         >
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              background: 'linear-gradient(135deg, #1e0f3a, #2d1b4e)',
+              background: '#ffffff',
               borderRadius: '16px', padding: '2rem',
               maxWidth: '680px', width: '100%',
               maxHeight: '80vh', overflowY: 'auto',
-              border: '1px solid rgba(139,92,246,0.3)',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-              <h2 style={{ margin: 0, fontSize: '1.1rem', color: '#f0ebff' }}>{selectedEmail.subject}</h2>
+              <h2 style={{ margin: 0, fontSize: '1.1rem', color: '#1e293b' }}>{selectedEmail.subject}</h2>
               <button onClick={() => setSelectedEmail(null)}
-                style={{ background: 'none', border: 'none', color: '#9b8fc0', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
+                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
             </div>
-            <div style={{ color: '#9b8fc0', fontSize: '0.82rem', marginBottom: '1rem' }}>
+            <div style={{ color: '#64748b', fontSize: '0.82rem', marginBottom: '1rem' }}>
               From: {selectedEmail.from} · {new Date(selectedEmail.date).toLocaleString()}
             </div>
             <div style={{
-              background: 'rgba(139,92,246,0.15)', borderRadius: '8px',
+              background: '#ede9fe', borderRadius: '8px',
               padding: '0.75rem 1rem', marginBottom: '1rem',
-              color: '#c4b5fd', fontSize: '0.85rem'
+              color: '#6366f1', fontSize: '0.85rem'
             }}>
               <strong>AI Summary:</strong> {selectedEmail.summary}
             </div>
 
-            {/* HTML email rendering */}
             {selectedEmail.html ? (
               <iframe
                 srcDoc={selectedEmail.html}
                 style={{
-                  width: '100%',
-                  height: '400px',
-                  border: 'none',
-                  borderRadius: '8px',
-                  background: 'white',
-                  marginBottom: '1.5rem',
+                  width: '100%', height: '400px',
+                  border: 'none', borderRadius: '8px',
+                  background: 'white', marginBottom: '1.5rem',
                 }}
                 sandbox="allow-same-origin"
               />
             ) : (
               <div style={{
-                color: '#c4b5fd', fontSize: '0.88rem', lineHeight: '1.7',
+                color: '#475569', fontSize: '0.88rem', lineHeight: '1.7',
                 whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: '1.5rem'
               }}>
                 {selectedEmail.body || selectedEmail.snippet}
@@ -489,9 +488,10 @@ export default function Dashboard() {
               onClick={() => handleReply(selectedEmail)}
               style={{
                 width: '100%', padding: '0.75rem',
-                background: 'linear-gradient(135deg, #6b46c1, #8b5cf6)',
+                background: '#6366f1',
                 color: 'white', border: 'none',
-                borderRadius: '10px', cursor: 'pointer', fontSize: '0.95rem'
+                borderRadius: '10px', cursor: 'pointer', fontSize: '0.95rem',
+                fontWeight: '500',
               }}
             >
               ↩️ Reply in Gmail
@@ -506,35 +506,35 @@ export default function Dashboard() {
           onClick={() => setSummaryEmail(null)}
           style={{
             position: 'fixed', inset: 0,
-            background: 'rgba(0,0,0,0.75)',
+            background: 'rgba(0,0,0,0.4)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             zIndex: 50, padding: '1rem',
-            backdropFilter: 'blur(4px)',
           }}
         >
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              background: 'linear-gradient(135deg, #1e0f3a, #2d1b4e)',
+              background: '#ffffff',
               borderRadius: '16px', padding: '2rem',
               maxWidth: '500px', width: '100%',
-              border: '1px solid rgba(139,92,246,0.3)',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-              <h2 style={{ margin: 0, fontSize: '1rem', color: '#f0ebff' }}>📋 Email Summary</h2>
+              <h2 style={{ margin: 0, fontSize: '1rem', color: '#1e293b' }}>📋 Email Summary</h2>
               <button onClick={() => setSummaryEmail(null)}
-                style={{ background: 'none', border: 'none', color: '#9b8fc0', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
+                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
             </div>
 
-            <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#e2d9f3', marginBottom: '1rem' }}>
+            <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#1e293b', marginBottom: '1rem' }}>
               {categoryEmoji[summaryEmail.category]} {summaryEmail.subject}
             </div>
 
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
               <span style={{
                 padding: '0.25rem 0.75rem',
-                background: categoryColor[summaryEmail.category] + '33',
+                background: categoryColor[summaryEmail.category] + '15',
                 color: categoryColor[summaryEmail.category],
                 borderRadius: '6px', fontSize: '0.78rem', fontWeight: 'bold'
               }}>
@@ -542,7 +542,7 @@ export default function Dashboard() {
               </span>
               <span style={{
                 padding: '0.25rem 0.75rem',
-                background: priorityColor[summaryEmail.priority] + '33',
+                background: priorityColor[summaryEmail.priority] + '15',
                 color: priorityColor[summaryEmail.priority],
                 borderRadius: '6px', fontSize: '0.78rem', fontWeight: 'bold'
               }}>
@@ -550,8 +550,8 @@ export default function Dashboard() {
               </span>
               <span style={{
                 padding: '0.25rem 0.75rem',
-                background: 'rgba(245, 158, 11, 0.2)',
-                color: '#f59e0b',
+                background: '#fef3c7',
+                color: '#d97706',
                 borderRadius: '6px', fontSize: '0.78rem', fontWeight: 'bold'
               }}>
                 ⭐ {summaryEmail.importance_score}/10
@@ -559,8 +559,8 @@ export default function Dashboard() {
               {summaryEmail.action_required && (
                 <span style={{
                   padding: '0.25rem 0.75rem',
-                  background: 'rgba(239, 68, 68, 0.2)',
-                  color: '#ef4444',
+                  background: '#fef2f2',
+                  color: '#dc2626',
                   borderRadius: '6px', fontSize: '0.78rem', fontWeight: 'bold'
                 }}>
                   🚨 ACTION NEEDED
@@ -568,17 +568,17 @@ export default function Dashboard() {
               )}
             </div>
 
-            <div style={{ fontSize: '0.8rem', color: '#9b8fc0', marginBottom: '1rem' }}>
+            <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '1rem' }}>
               From: {summaryEmail.from} · {new Date(summaryEmail.date).toLocaleString()}
             </div>
 
             <div style={{
-              background: 'rgba(139,92,246,0.15)',
+              background: '#f1f5f9',
               borderRadius: '10px', padding: '1rem',
               marginBottom: '1.5rem',
-              color: '#e2d9f3', fontSize: '0.92rem', lineHeight: '1.6'
+              color: '#1e293b', fontSize: '0.92rem', lineHeight: '1.6'
             }}>
-              <div style={{ fontSize: '0.72rem', color: '#8b5cf6', fontWeight: 'bold', marginBottom: '0.5rem' }}>AI SUMMARY</div>
+              <div style={{ fontSize: '0.72rem', color: '#6366f1', fontWeight: 'bold', marginBottom: '0.5rem' }}>AI SUMMARY</div>
               {summaryEmail.summary}
             </div>
 
@@ -587,9 +587,10 @@ export default function Dashboard() {
                 onClick={() => { setSummaryEmail(null); setSelectedEmail(summaryEmail) }}
                 style={{
                   flex: 1, padding: '0.65rem',
-                  background: 'rgba(255,255,255,0.08)',
-                  color: '#c4b5fd', border: '1px solid rgba(139,92,246,0.4)',
-                  borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem'
+                  background: '#f1f5f9',
+                  color: '#475569', border: '1px solid #e2e8f0',
+                  borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem',
+                  fontWeight: '500',
                 }}
               >
                 👁️ View Full Email
@@ -598,9 +599,10 @@ export default function Dashboard() {
                 onClick={() => handleReply(summaryEmail)}
                 style={{
                   flex: 1, padding: '0.65rem',
-                  background: 'linear-gradient(135deg, #6b46c1, #8b5cf6)',
+                  background: '#6366f1',
                   color: 'white', border: 'none',
-                  borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem'
+                  borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem',
+                  fontWeight: '500',
                 }}
               >
                 ↩️ Reply in Gmail
