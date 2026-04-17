@@ -7,12 +7,12 @@ const nextConfig: NextConfig = {
         source: "/(.*)",
         headers: [
           {
-            key: "X-Frame-Options",
-            value: "SAMEORIGIN",
+            key: "Cross-Origin-Opener-Policy",
+            value: "unsafe-none",
           },
           {
-            key: "Content-Security-Policy",
-            value: "frame-ancestors 'self' https://mail.google.com chrome-extension://*;",
+            key: "Cross-Origin-Embedder-Policy",
+            value: "unsafe-none",
           },
         ],
       },
