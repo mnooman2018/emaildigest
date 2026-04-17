@@ -25,11 +25,11 @@ function showLoginScreen() {
   const contentEl = document.getElementById('ed-content')
   if (!contentEl) return
   contentEl.innerHTML = `
-    <div style="text-align:center;padding:2rem 1.5rem;color:#1e293b;">
+    <div style="text-align:center;padding:2rem 1.5rem;">
       <div style="font-size:3rem;margin-bottom:1rem;">✉️</div>
       <h2 style="font-size:1rem;font-weight:700;color:#1e293b;margin:0 0 0.5rem;">Welcome to EmailDigest</h2>
       <p style="font-size:0.82rem;color:#64748b;margin:0 0 1.5rem;line-height:1.6;">
-        Turn your Gmail into daily actionable insights with AI
+        AI-powered email summaries right inside Gmail
       </p>
       <button id="ed-login-btn" style="
         background:linear-gradient(135deg,#6366f1,#8b5cf6);
@@ -37,8 +37,9 @@ function showLoginScreen() {
         padding:0.75rem 1.5rem;font-size:0.88rem;
         cursor:pointer;width:100%;font-weight:500;
         box-shadow:0 4px 12px rgba(99,102,241,0.3);
+        margin-bottom:0.75rem;
       ">🔗 Connect with Google</button>
-      <p style="font-size:0.7rem;color:#94a3b8;margin-top:1rem;">
+      <p style="font-size:0.7rem;color:#94a3b8;">
         We only read your emails — never send or delete anything
       </p>
     </div>
@@ -48,43 +49,38 @@ function showLoginScreen() {
     const contentEl = document.getElementById('ed-content')
     contentEl.innerHTML = `
       <div style="text-align:center;padding:2rem;color:#64748b;">
-        <div style="font-size:2rem;margin-bottom:0.5rem;">⏳</div>
-        <p style="font-size:0.85rem;">Opening login window...</p>
-        <p style="font-size:0.72rem;margin-top:0.5rem;color:#94a3b8;">Please complete login in the popup and come back here.</p>
-        <button id="ed-done-login" style="
-          margin-top:1.5rem;background:#6366f1;color:white;
-          border:none;border-radius:8px;padding:0.5rem 1.2rem;
-          cursor:pointer;font-size:0.82rem;
-        ">✅ I've logged in — Load Emails</button>
+        <div style="font-size:2rem;margin-bottom:1rem;">⏳</div>
+        <p style="font-size:0.85rem;font-weight:500;color:#1e293b;">Connecting to Google...</p>
+        <p style="font-size:0.72rem;margin-top:0.5rem;color:#94a3b8;line-height:1.6;">
+          Please complete login in the popup window.<br>It will close automatically when done.
+        </p>
       </div>
     `
 
-    // Open login in a small popup window
+    // Listen for success message from popup
+    window.addEventListener('message', function onMessage(e) {
+      if (e.data === 'emaildigest-login-success') {
+        window.removeEventListener('message', onMessage)
+        emailsData = []
+        loadEmails()
+      }
+    })
+
+    // Open login popup
     const loginWin = window.open(
       SITE_URL,
       'emaildigest-login',
-      'width=500,height=600,left=400,top=100,toolbar=no,menubar=no,scrollbars=yes'
+      'width=480,height=580,left=400,top=80,toolbar=no,menubar=no,scrollbars=yes'
     )
 
-    // Auto-detect when login is complete
-    const checkLogin = setInterval(() => {
-      try {
-        if (loginWin && loginWin.closed) {
-          clearInterval(checkLogin)
-          emailsData = []
-          loadEmails()
-        }
-      } catch(e) {
-        clearInterval(checkLogin)
+    // Fallback: if popup closes without message
+    const checkClosed = setInterval(() => {
+      if (loginWin && loginWin.closed) {
+        clearInterval(checkClosed)
+        emailsData = []
+        loadEmails()
       }
-    }, 1000)
-
-    document.getElementById('ed-done-login').addEventListener('click', () => {
-      if (loginWin && !loginWin.closed) loginWin.close()
-      clearInterval(checkLogin)
-      emailsData = []
-      loadEmails()
-    })
+    }, 800)
   })
 }
 

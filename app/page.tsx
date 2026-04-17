@@ -20,10 +20,11 @@ export default async function Home() {
   async function handleGoogleLogin() {
     "use server";
     const supabase = await createClient();
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
     const { data } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
+        redirectTo: `${siteUrl}/auth/callback`,
         scopes: 'email profile https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.labels',
         queryParams: {
           access_type: 'offline',
@@ -51,30 +52,27 @@ export default async function Home() {
         maxWidth: '560px',
         padding: '0 2rem',
       }}>
-        {/* Title */}
         <h1 style={{
           fontSize: '2rem',
           fontWeight: '700',
           color: '#1e2a3a',
-          margin: '0 0 1rem',
+          margin: '0 0 0.75rem',
           letterSpacing: '-0.02em',
           lineHeight: '1.1',
         }}>
           EmailDigest
         </h1>
 
-        {/* Subtitle */}
         <p style={{
           fontSize: '0.9rem',
           color: '#6b7a8d',
-          margin: '0 0 2.5rem',
+          margin: '0 0 2rem',
           lineHeight: '1.6',
           fontWeight: '400',
         }}>
-          Turn your Gmail into daily actionable<br />insights with AI
+          Turn your Gmail into daily actionable insights with AI
         </p>
 
-        {/* Button */}
         <form action={handleGoogleLogin}>
           <button
             type="submit"
@@ -83,15 +81,14 @@ export default async function Home() {
               color: 'white',
               border: 'none',
               borderRadius: '16px',
-              padding: '1rem 2.5rem',
-              fontSize: '1.1rem',
+              padding: '0.875rem 2rem',
+              fontSize: '1rem',
               fontWeight: '500',
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '0.6rem',
               boxShadow: '0 8px 32px rgba(107, 127, 212, 0.35)',
-              transition: 'all 0.2s ease',
               letterSpacing: '0.01em',
             }}
           >
@@ -99,10 +96,9 @@ export default async function Home() {
           </button>
         </form>
 
-        {/* Privacy note */}
         <p style={{
-          marginTop: '1.25rem',
-          fontSize: '0.8rem',
+          marginTop: '1rem',
+          fontSize: '0.75rem',
           color: '#9aa5b4',
           letterSpacing: '0.01em',
         }}>

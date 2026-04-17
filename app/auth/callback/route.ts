@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server'
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
+  const isPopup = searchParams.get('popup') === 'true'
 
   if (code) {
     const cookieStore = await cookies()
@@ -33,6 +34,23 @@ export async function GET(request: Request) {
           access_token: session.provider_token,
           refresh_token: session.provider_refresh_token,
         }, { onConflict: 'user_id' })
+      }
+
+      // If opened from extension popup, close window automatically
+      if (isPopup) {
+        return new NextResponse(`
+          <html>
+            <body>
+              <script>
+                window.opener && window.opener.postMessage('emaildigest-login-success', '*');
+                window.close();
+              </script>
+              <p>Login successful! Closing window...</p>
+            </body>
+          </html>
+        `, {
+          headers: { 'Content-Type': 'text/html' }
+        })
       }
 
       return NextResponse.redirect(`${origin}/`)
