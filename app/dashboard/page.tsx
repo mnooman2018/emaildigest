@@ -143,11 +143,30 @@ export default function Dashboard() {
         boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          <span style={{ fontSize: '1.3rem' }}>✉️</span>
-          <h1 style={{ margin: 0, fontSize: '1.3rem', fontWeight: '700', color: '#1e293b' }}>
-            EmailDigest
-          </h1>
-        </div>
+  <svg width="160" height="36" viewBox="0 0 680 160" role="img">
+    <defs>
+      <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#6366f1"/>
+        <stop offset="100%" stopColor="#8b5cf6"/>
+      </linearGradient>
+      <linearGradient id="pinkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#ec4899"/>
+        <stop offset="100%" stopColor="#f43f5e"/>
+      </linearGradient>
+    </defs>
+    <rect x="10" y="15" width="80" height="55" rx="8" fill="url(#purpleGrad)"/>
+    <polygon points="10,15 50,48 90,15" fill="#4f46e5"/>
+    <line x1="10" y1="70" x2="38" y2="44" stroke="white" strokeWidth="1.5" opacity="0.4"/>
+    <line x1="90" y1="70" x2="62" y2="44" stroke="white" strokeWidth="1.5" opacity="0.4"/>
+    <circle cx="30" cy="56" r="3" fill="white" opacity="0.6"/>
+    <circle cx="50" cy="60" r="3" fill="white" opacity="0.6"/>
+    <circle cx="70" cy="56" r="3" fill="white" opacity="0.6"/>
+    <rect x="72" y="5" width="26" height="14" rx="7" fill="url(#pinkGrad)"/>
+    <text x="85" y="15.5" textAnchor="middle" fontFamily="Georgia, serif" fontSize="8" fontWeight="700" fill="white">AI</text>
+    <text x="105" y="48" fontFamily="Georgia, serif" fontSize="28" fontWeight="700" fill="#1e293b">Email</text>
+    <text x="105" y="80" fontFamily="Georgia, serif" fontSize="28" fontWeight="700" fill="url(#purpleGrad)">Digest</text>
+  </svg>
+</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <span style={{ color: '#64748b', fontSize: '0.85rem' }}>{user?.email}</span>
           <button onClick={handleLogout} style={{
