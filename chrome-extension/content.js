@@ -68,7 +68,7 @@ function showLoginScreen() {
 
     // Open login popup
     const loginWin = window.open(
-      SITE_URL,
+  SITE_URL + '/popup',
       'emaildigest-login',
       'width=480,height=580,left=400,top=80,toolbar=no,menubar=no,scrollbars=yes'
     )
