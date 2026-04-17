@@ -10,11 +10,10 @@ const categoryEmoji = { meeting: '📅', task: '✅', promo: '🏷️', personal
 const categoryColor = { meeting: '#2563eb', task: '#7c3aed', promo: '#d97706', personal: '#db2777', other: '#475569' }
 const priorityColor = { high: '#dc2626', medium: '#d97706', low: '#16a34a' }
 
-// Listen for token from popup
 window.addEventListener('message', (e) => {
   if (e.data?.type === 'emaildigest-token') {
     authToken = e.data.token
-    chrome.storage.local.set({ ed_token: authToken, ed_email: e.data.email })
+    chrome.storage.local.set({ ed_token: authToken })
     emailsData = []
     loadEmails()
   }
@@ -75,19 +74,48 @@ function showLoginScreen() {
     )
 
     const checkClosed = setInterval(() => {
-      if (loginWin && loginWin.closed) {
-        clearInterval(checkClosed)
-        if (!authToken) {
-          chrome.storage.local.get(['ed_token'], (result) => {
-            if (result.ed_token) {
-              authToken = result.ed_token
+      try {
+        if (loginWin && loginWin.closed) {
+          clearInterval(checkClosed)
+          setTimeout(() => {
+            if (authToken) {
               emailsData = []
               loadEmails()
-            } else {
-              showLoginScreen()
+              return
             }
-          })
+            chrome.storage.local.get(['ed_token'], (result) => {
+              if (result.ed_token) {
+                authToken = result.ed_token
+                emailsData = []
+                loadEmails()
+              } else {
+                const tempFrame = document.createElement('iframe')
+                tempFrame.src = `${SITE_URL}/extension-auth`
+                tempFrame.style.display = 'none'
+                document.body.appendChild(tempFrame)
+                tempFrame.onload = () => {
+                  try {
+                    const token = tempFrame.contentWindow?.localStorage.getItem('ed_token')
+                    document.body.removeChild(tempFrame)
+                    if (token) {
+                      authToken = token
+                      chrome.storage.local.set({ ed_token: token })
+                      emailsData = []
+                      loadEmails()
+                    } else {
+                      showLoginScreen()
+                    }
+                  } catch(e) {
+                    document.body.removeChild(tempFrame)
+                    showLoginScreen()
+                  }
+                }
+              }
+            })
+          }, 1500)
         }
+      } catch(e) {
+        clearInterval(checkClosed)
       }
     }, 500)
   })
@@ -309,7 +337,9 @@ function createPanel() {
   })
 
   document.getElementById('ed-refresh').addEventListener('click', () => {
+    authToken = null
     emailsData = []
+    chrome.storage.local.remove(['ed_token'])
     loadEmails()
   })
 

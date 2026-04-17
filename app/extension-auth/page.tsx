@@ -17,22 +17,23 @@ export default function ExtensionAuth() {
 
       if (session?.access_token) {
         setStatus('saving')
-        
-        // Send token to the extension panel
+        localStorage.setItem('ed_token', session.access_token)
+        localStorage.setItem('ed_email', session.user.email || '')
+
         if (window.opener) {
-          window.opener.postMessage({
-            type: 'emaildigest-token',
-            token: session.access_token,
-            email: session.user.email,
-          }, '*')
+          try {
+            window.opener.postMessage({
+              type: 'emaildigest-token',
+              token: session.access_token,
+              email: session.user.email,
+            }, '*')
+          } catch(e) {
+            console.log('postMessage blocked')
+          }
         }
 
         setStatus('done')
-        
-        // Close after short delay
-        setTimeout(() => {
-          window.close()
-        }, 800)
+        setTimeout(() => window.close(), 1200)
       } else {
         setStatus('error')
       }
@@ -57,16 +58,10 @@ export default function ExtensionAuth() {
             <p style={{ color: '#64748b', fontSize: '0.9rem' }}>Connecting...</p>
           </>
         )}
-        {status === 'saving' && (
+        {(status === 'saving' || status === 'done') && (
           <>
             <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>✅</div>
-            <p style={{ color: '#6366f1', fontSize: '0.9rem' }}>Login successful!</p>
-          </>
-        )}
-        {status === 'done' && (
-          <>
-            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>✅</div>
-            <p style={{ color: '#16a34a', fontSize: '0.9rem' }}>Done! Closing window...</p>
+            <p style={{ color: '#16a34a', fontSize: '0.9rem' }}>Login successful! Closing...</p>
           </>
         )}
         {status === 'error' && (
