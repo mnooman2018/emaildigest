@@ -5,21 +5,9 @@ export default async function PopupPage() {
   const supabase = await createClient();
   const { data: { session } } = await supabase.auth.getSession();
 
+  // Already logged in — go to extension-auth to send token to panel
   if (session) {
-    // Already logged in — send success message and close
-    return (
-      <html>
-        <body>
-          <script dangerouslySetInnerHTML={{ __html: `
-            window.opener && window.opener.postMessage('emaildigest-login-success', '*');
-            window.close();
-          `}} />
-          <p style={{textAlign:'center', padding:'2rem', fontFamily:'Georgia,serif', color:'#64748b'}}>
-            ✅ Logged in! Closing window...
-          </p>
-        </body>
-      </html>
-    )
+    redirect('/extension-auth')
   }
 
   async function handleGoogleLogin() {

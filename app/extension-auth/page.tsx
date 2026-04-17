@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 
 export default function ExtensionAuth() {
-  const [status, setStatus] = useState<'loading' | 'saving' | 'done' | 'error'>('loading')
+  const [status, setStatus] = useState('loading')
 
   useEffect(() => {
     const supabase = createBrowserClient(
@@ -17,17 +17,22 @@ export default function ExtensionAuth() {
 
       if (session?.access_token) {
         setStatus('saving')
-        // Send token to extension
-        window.postMessage({
-          type: 'emaildigest-token',
-          token: session.access_token,
-          email: session.user.email,
-        }, '*')
+        
+        // Send token to the extension panel
+        if (window.opener) {
+          window.opener.postMessage({
+            type: 'emaildigest-token',
+            token: session.access_token,
+            email: session.user.email,
+          }, '*')
+        }
 
+        setStatus('done')
+        
+        // Close after short delay
         setTimeout(() => {
-          setStatus('done')
           window.close()
-        }, 1000)
+        }, 800)
       } else {
         setStatus('error')
       }
@@ -46,10 +51,30 @@ export default function ExtensionAuth() {
       fontFamily: 'Georgia, serif',
     }}>
       <div style={{ textAlign: 'center', padding: '2rem' }}>
-        {status === 'loading' && <p style={{ color: '#64748b' }}>⏳ Checking login...</p>}
-        {status === 'saving' && <p style={{ color: '#6366f1' }}>✅ Login successful! Closing...</p>}
-        {status === 'done' && <p style={{ color: '#16a34a' }}>✅ Done! You can close this window.</p>}
-        {status === 'error' && <p style={{ color: '#dc2626' }}>❌ Please try logging in again.</p>}
+        {status === 'loading' && (
+          <>
+            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+            <p style={{ color: '#64748b', fontSize: '0.9rem' }}>Connecting...</p>
+          </>
+        )}
+        {status === 'saving' && (
+          <>
+            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>✅</div>
+            <p style={{ color: '#6366f1', fontSize: '0.9rem' }}>Login successful!</p>
+          </>
+        )}
+        {status === 'done' && (
+          <>
+            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>✅</div>
+            <p style={{ color: '#16a34a', fontSize: '0.9rem' }}>Done! Closing window...</p>
+          </>
+        )}
+        {status === 'error' && (
+          <>
+            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>❌</div>
+            <p style={{ color: '#dc2626', fontSize: '0.9rem' }}>Please try again.</p>
+          </>
+        )}
       </div>
     </main>
   )
