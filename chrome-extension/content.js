@@ -9,13 +9,12 @@ let pinnedEmails = []
 let selectedDate = new Date().toISOString().split('T')[0]
 let timeFrom = '00:00'
 let timeTo = '23:59'
-let activeView = 'emails' // 'emails' or 'pinned'
+let activeView = 'emails'
 
 const categoryEmoji = { meeting: '📅', task: '✅', promo: '🏷️', personal: '👤', other: '📧' }
 const categoryColor = { meeting: '#2563eb', task: '#7c3aed', promo: '#d97706', personal: '#db2777', other: '#475569' }
 const priorityColor = { high: '#dc2626', medium: '#d97706', low: '#16a34a' }
 
-// Load saved data on start
 chrome.storage.local.get(['ed_token', 'ed_pinned'], (result) => {
   if (result.ed_token) savedToken = result.ed_token
   if (result.ed_pinned) pinnedEmails = result.ed_pinned
@@ -49,7 +48,8 @@ function showLoginScreen() {
         box-shadow:0 4px 15px rgba(99,102,241,0.4);
         margin-bottom:0.75rem;
       ">🔗 Connect with Google</button>
-      <p style="font-size:0.7rem;color:#94a3b8;">We only read your emails — never send or delete anything</p>
+      <p style="font-size:0.7rem;color:#94a3b8;margin-bottom:0.5rem;">We only read your emails — never send or delete anything</p>
+      <a href="${SITE_URL}/privacy" target="_blank" style="font-size:0.7rem;color:#6366f1;display:block;">📄 Read our Privacy Policy</a>
     </div>
   `
 
@@ -112,31 +112,25 @@ function isPinned(emailId) {
 function renderToolbar() {
   return `
     <div style="background:#fff;border-bottom:1px solid #e2e8f0;padding:0.6rem 0.75rem;">
-      <!-- View tabs -->
       <div style="display:flex;gap:0.4rem;margin-bottom:0.6rem;">
         <button data-view="emails" style="
-          flex:1;padding:0.3rem;border-radius:8px;font-size:0.72rem;cursor:pointer;
-          border:none;
+          flex:1;padding:0.3rem;border-radius:8px;font-size:0.72rem;cursor:pointer;border:none;
           background:${activeView === 'emails' ? '#6366f1' : '#f1f5f9'};
           color:${activeView === 'emails' ? 'white' : '#64748b'};
           font-weight:${activeView === 'emails' ? '600' : '400'};
         ">📧 Emails</button>
         <button data-view="pinned" style="
-          flex:1;padding:0.3rem;border-radius:8px;font-size:0.72rem;cursor:pointer;
-          border:none;
+          flex:1;padding:0.3rem;border-radius:8px;font-size:0.72rem;cursor:pointer;border:none;
           background:${activeView === 'pinned' ? '#6366f1' : '#f1f5f9'};
           color:${activeView === 'pinned' ? 'white' : '#64748b'};
           font-weight:${activeView === 'pinned' ? '600' : '400'};
         ">📌 Pinned (${pinnedEmails.length})</button>
       </div>
-
-      <!-- Date picker -->
       <div style="display:flex;gap:0.4rem;align-items:center;margin-bottom:0.5rem;">
         <label style="font-size:0.7rem;color:#64748b;white-space:nowrap;">📅 Date:</label>
         <input type="date" id="ed-date-picker" value="${selectedDate}" style="
           flex:1;padding:0.2rem 0.4rem;border:1px solid #e2e8f0;
-          border-radius:6px;font-size:0.72rem;color:#1e293b;
-          cursor:pointer;
+          border-radius:6px;font-size:0.72rem;color:#1e293b;cursor:pointer;
         "/>
         <button id="ed-date-go" style="
           background:#6366f1;color:white;border:none;
@@ -144,8 +138,6 @@ function renderToolbar() {
           cursor:pointer;font-size:0.72rem;font-weight:600;
         ">Go</button>
       </div>
-
-      <!-- Time filter -->
       <div style="display:flex;gap:0.4rem;align-items:center;">
         <label style="font-size:0.7rem;color:#64748b;white-space:nowrap;">⏰ Time:</label>
         <input type="time" id="ed-time-from" value="${timeFrom}" style="
@@ -176,12 +168,10 @@ function renderEmails() {
   if (activeView === 'pinned') {
     let html = toolbar
     if (pinnedEmails.length === 0) {
-      html += `<div style="text-align:center;padding:2rem;color:#64748b;font-size:0.82rem;">No pinned emails yet.<br>Click 📌 on any email to pin it.</div>`
+      html += `<div style="text-align:center;padding:2rem;color:#64748b;font-size:0.82rem;">No pinned emails yet.<br>Click 🔘 on any email to pin it.</div>`
     } else {
       html += `<div style="padding:0.75rem;">`
-      pinnedEmails.forEach(email => {
-        html += renderEmailCard(email)
-      })
+      pinnedEmails.forEach(email => { html += renderEmailCard(email) })
       html += `</div>`
     }
     contentEl.innerHTML = html
@@ -198,7 +188,6 @@ function renderEmails() {
 
   let html = toolbar
 
-  // Category tabs
   html += `<div style="display:flex;gap:0.3rem;flex-wrap:wrap;padding:0.5rem 0.75rem;background:#fff;border-bottom:1px solid #e2e8f0;">`
   categories.forEach(cat => {
     html += `<button data-cat="${cat}" style="
@@ -211,7 +200,7 @@ function renderEmails() {
   })
   html += `</div>`
 
-  html += `<div style="padding:0.75rem;overflow-y:auto;">`
+  html += `<div style="padding:0.75rem;">`
 
   if (urgentEmails.length > 0 && activeCategory === 'all') {
     html += `<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:0.6rem;margin-bottom:0.75rem;">
@@ -225,9 +214,7 @@ function renderEmails() {
   if (filtered.length === 0) {
     html += `<p style="text-align:center;color:#64748b;font-size:0.82rem;padding:2rem;">No emails found for this time range.</p>`
   } else {
-    filtered.forEach(email => {
-      html += renderEmailCard(email)
-    })
+    filtered.forEach(email => { html += renderEmailCard(email) })
   }
 
   html += `</div>`
@@ -273,7 +260,6 @@ function renderEmailCard(email) {
 }
 
 function attachToolbarEvents() {
-  // View tabs
   document.querySelectorAll('[data-view]').forEach(btn => {
     btn.addEventListener('click', () => {
       activeView = btn.dataset.view
@@ -281,7 +267,6 @@ function attachToolbarEvents() {
     })
   })
 
-  // Date picker
   const datePicker = document.getElementById('ed-date-picker')
   const dateGo = document.getElementById('ed-date-go')
   if (dateGo) {
@@ -292,7 +277,6 @@ function attachToolbarEvents() {
     })
   }
 
-  // Time filter
   const timeApply = document.getElementById('ed-time-apply')
   if (timeApply) {
     timeApply.addEventListener('click', () => {
@@ -306,7 +290,6 @@ function attachToolbarEvents() {
 }
 
 function attachEmailEvents() {
-  // Category tabs
   document.querySelectorAll('[data-cat]').forEach(btn => {
     btn.addEventListener('click', () => {
       activeCategory = btn.dataset.cat
@@ -314,7 +297,6 @@ function attachEmailEvents() {
     })
   })
 
-  // Pin buttons
   document.querySelectorAll('[data-pin]').forEach(btn => {
     btn.addEventListener('click', () => {
       const emailId = btn.dataset.pin
@@ -427,6 +409,7 @@ function createPanel() {
     <div style="display:flex;gap:0.5rem;align-items:center;">
       <button id="ed-maximize" style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:0.2rem 0.5rem;cursor:pointer;font-size:0.75rem;color:#475569;">⛶ Full</button>
       <button id="ed-refresh" style="background:#6366f1;border:none;border-radius:6px;padding:0.2rem 0.5rem;cursor:pointer;font-size:0.75rem;color:white;">🔄</button>
+      <button id="ed-logout" style="background:#fee2e2;border:1px solid #fecaca;border-radius:6px;padding:0.2rem 0.5rem;cursor:pointer;font-size:0.72rem;color:#dc2626;">Logout</button>
       <button id="ed-close" style="background:none;border:none;cursor:pointer;font-size:1.1rem;color:#94a3b8;">✕</button>
     </div>
   `
@@ -463,6 +446,14 @@ function createPanel() {
     panel.style.width = '400px'
     toggleBtn.style.right = '0'
     toggleBtn.innerHTML = envelopeIcon()
+  })
+
+  document.getElementById('ed-logout').addEventListener('click', () => {
+    savedToken = null
+    emailsData = []
+    pinnedEmails = []
+    chrome.storage.local.remove(['ed_token', 'ed_pinned'])
+    showLoginScreen()
   })
 
   document.getElementById('ed-refresh').addEventListener('click', () => {

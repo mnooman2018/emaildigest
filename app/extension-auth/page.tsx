@@ -4,16 +4,27 @@ import { useEffect, useState } from 'react'
 
 export default function ExtensionAuth() {
   const [status, setStatus] = useState('loading')
+  const [countdown, setCountdown] = useState(3)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const token = params.get('token')
 
     if (token) {
-      // Store in sessionStorage so auth-listener can read it
       sessionStorage.setItem('ed_token', token)
       window.postMessage({ type: 'ed-save-token', token }, '*')
       setStatus('done')
+
+      // Countdown then close
+      let count = 3
+      const timer = setInterval(() => {
+        count--
+        setCountdown(count)
+        if (count === 0) {
+          clearInterval(timer)
+          window.close()
+        }
+      }, 1000)
     } else {
       setStatus('error')
     }
@@ -40,7 +51,10 @@ export default function ExtensionAuth() {
             <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>✅</div>
             <p style={{ color: '#16a34a', fontSize: '1rem', fontWeight: '600' }}>Login successful!</p>
             <p style={{ color: '#64748b', fontSize: '0.82rem', marginTop: '0.5rem' }}>
-              Go back to Gmail and click<br/><strong>"Done! Load My Emails"</strong>
+              Closing in {countdown} seconds...
+            </p>
+            <p style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.5rem' }}>
+              Go back to Gmail and click "Done! Load My Emails"
             </p>
           </>
         )}
