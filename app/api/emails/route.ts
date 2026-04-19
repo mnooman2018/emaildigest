@@ -30,25 +30,21 @@ async function summarizeEmail(subject: string, from: string, body: string) {
       model: groq('llama-3.3-70b-versatile'),
       prompt: `You are an expert email analyst. Analyze this email and respond with ONLY a valid JSON object.
 
-CATEGORIZATION RULES (follow strictly):
-- "meeting" = ANY calendar invite, Google Meet link, Zoom link, Teams link, interview scheduled, meeting request
-- "task" = error alert, approval needed, deadline, form submission, action required, bug report
-- "personal" = a real human writing directly to you from their personal email address
-- "other" = bank statements, receipts, account notifications, anything else
+CATEGORIZATION RULES (be very strict):
+- "promo" = ANY marketing, advertisement, investment advice, mutual funds, insurance, sales pitch, newsletter, job alerts from companies, brand emails, app notifications, subscription offers, "invest in", "earn money", "limited offer" — BE AGGRESSIVE about labeling these as promo
+- "meeting" = calendar invite, Google Meet/Zoom/Teams link, interview scheduled, meeting request
+- "task" = system alert, approval needed, deadline, form submission, action required, bug report
+- "personal" = a real human writing directly to you from their personal email
+- "other" = bank statements, OTP, receipts, delivery updates, account notifications
 
-IMPORTANT SCORING:
-- meeting: importance 8-10
-- task with deadline: importance 7-9  
-- personal email: importance 7-9
-- bank/account statement: importance 4-6
-- other: importance 3-5
+IMPORTANT: If the email is trying to sell you something, promote a product/service, or is from a company's marketing team — it is ALWAYS "promo" regardless of how it's worded.
 
 Subject: ${subject}
 From: ${from}
 Body: ${cleanBody}
 
 Respond with ONLY this JSON (no markdown, no backticks):
-{"summary":"2-3 sentence specific summary of what this email is about and what action is needed","importance_score":5,"priority":"medium","action_required":false,"category":"other"}`,
+{"summary":"2-3 sentence specific summary","importance_score":5,"priority":"medium","action_required":false,"category":"other"}`,
     })
 
     const cleaned = text.replace(/```json|```/g, '').trim()
@@ -59,7 +55,7 @@ Respond with ONLY this JSON (no markdown, no backticks):
       importance_score: Number(parsed.importance_score || 5),
       priority: (parsed.priority as 'high' | 'medium' | 'low') || 'medium',
       action_required: Boolean(parsed.action_required || false),
-      category: (parsed.category as 'meeting' | 'task' | 'personal' | 'other') || 'other',
+      category: (parsed.category as 'meeting' | 'task' | 'promo' | 'personal' | 'other') || 'other',
     }
   } catch (err) {
     console.error('AI FAILED for:', subject, err)
@@ -103,22 +99,9 @@ function extractBody(payload: any): { text: string; html: string } {
 }
 
 function isPromo(from: string, subject: string): boolean {
-  const s = subject.toLowerCase()
   const f = from.toLowerCase()
+  const s = subject.toLowerCase()
 
-  // Always allow transactional emails
-  const alwaysAllow = [
-    'otp', 'one time password', 'verification code',
-    'order', 'delivery', 'delivered', 'shipped',
-    'payment received', 'transaction', 'debited', 'credited',
-    'invoice', 'receipt', 'booking confirmed',
-    'password reset', 'login attempt', 'security alert',
-    'interview', 'offer letter', 'selected', 'rejected',
-    'your application', 'admission',
-  ]
-  if (alwaysAllow.some(k => s.includes(k))) return false
-
-  // Block bulk sender domains
   const bulkSenders = [
     'noreply@', 'no-reply@', 'donotreply@',
     'newsletter@', 'marketing@', 'offers@',
@@ -127,25 +110,12 @@ function isPromo(from: string, subject: string): boolean {
   ]
   if (bulkSenders.some(k => f.includes(k))) return true
 
-  // Block clearly promotional subjects
-  const promoSubjects = [
-    '% off', 'flat off', 'upto off', 'upto rs',
-    'sale', 'flash sale', 'mega sale', 'big sale',
-    'deal', 'offer', 'discount', 'coupon', 'voucher',
-    'cashback', 'free delivery', 'free shipping',
-    'win ', 'winner', 'prize', 'lucky draw',
-    'refer and earn', 'invite and earn',
-    'shop now', 'buy now', 'order now', 'tap to know more',
-    'don\'t miss', 'hurry', 'last chance', 'expires soon',
-    'new arrival', 'just launched', 'trending now',
-    'newsletter', 'weekly digest', 'monthly update',
-    'mutual funds aren\'t', 'invest in', 'start investing',
-    'earn upto', 'earn up to', 'make money',
+  const clearPromoSubjects = [
+    '% off', 'flash sale', 'mega sale', 'limited offer',
     'job alert', 'new jobs match', 'jobs for you',
-    'it\'s mango season', 'summer', 'your summer',
-    'upgrade your', 'upgrade now', 'get started today',
+    'newsletter', 'weekly digest',
   ]
-  if (promoSubjects.some(k => s.includes(k))) return true
+  if (clearPromoSubjects.some(k => s.includes(k))) return true
 
   return false
 }
@@ -286,9 +256,9 @@ export async function GET(request: Request) {
   )
 
   const top10 = emailResults
-    .filter(e => e !== null)
-    .sort((a, b) => b!.importance_score - a!.importance_score)
-    .slice(0, 10)
+  .filter(e => e !== null && e.category !== 'promo')
+  .sort((a, b) => b!.importance_score - a!.importance_score)
+  .slice(0, 10)
 
   return NextResponse.json({ emails: top10 }, { headers: corsHeaders })
 }
