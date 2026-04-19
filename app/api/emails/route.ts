@@ -28,25 +28,27 @@ async function summarizeEmail(subject: string, from: string, body: string) {
 
     const { text } = await generateText({
       model: groq('llama-3.3-70b-versatile'),
-      prompt: `You are an expert email analyst. Analyze this email carefully and respond with ONLY a valid JSON object.
+      prompt: `You are an expert email analyst. Analyze this email and respond with ONLY a valid JSON object.
 
-RULES:
-- summary: Write a clear specific 2-3 sentence summary of what this email is about and what action is needed. Be specific and detailed.
-- importance_score: Rate 1-10 based on urgency and relevance
-- priority: "high" if score 7-10, "medium" if 4-6, "low" if 1-3
-- action_required: true only if the email requires the recipient to DO something
-- category:
-  * "meeting" = calendar invite, interview scheduled, meeting request, zoom/teams/meet link
-  * "task" = error alert, approval needed, deadline, bug report, action required from a system
-  * "personal" = a real person writing directly to you from their personal email
-  * "other" = bank statements, receipts, account notifications
+CATEGORIZATION RULES (follow strictly):
+- "meeting" = ANY calendar invite, Google Meet link, Zoom link, Teams link, interview scheduled, meeting request
+- "task" = error alert, approval needed, deadline, form submission, action required, bug report
+- "personal" = a real human writing directly to you from their personal email address
+- "other" = bank statements, receipts, account notifications, anything else
+
+IMPORTANT SCORING:
+- meeting: importance 8-10
+- task with deadline: importance 7-9  
+- personal email: importance 7-9
+- bank/account statement: importance 4-6
+- other: importance 3-5
 
 Subject: ${subject}
 From: ${from}
 Body: ${cleanBody}
 
-Respond with ONLY this JSON (no markdown, no backticks, no explanation):
-{"summary":"detailed 2-3 sentence summary here","importance_score":5,"priority":"medium","action_required":false,"category":"other"}`,
+Respond with ONLY this JSON (no markdown, no backticks):
+{"summary":"2-3 sentence specific summary of what this email is about and what action is needed","importance_score":5,"priority":"medium","action_required":false,"category":"other"}`,
     })
 
     const cleaned = text.replace(/```json|```/g, '').trim()
@@ -100,55 +102,50 @@ function extractBody(payload: any): { text: string; html: string } {
   return { text, html }
 }
 
-// Check if email is promotional using AI category + heuristics
-function isLikelyPromo(from: string, subject: string): boolean {
+function isPromo(from: string, subject: string): boolean {
   const s = subject.toLowerCase()
+  const f = from.toLowerCase()
 
-  // ALWAYS ALLOW these — transactional emails that are always important
+  // Always allow transactional emails
   const alwaysAllow = [
-    'otp', 'one time password', 'verification code', 'verify',
-    'order', 'delivery', 'delivered', 'shipped', 'dispatch',
-    'payment', 'transaction', 'debit', 'credit', 'paid',
-    'invoice', 'receipt', 'bill', 'statement',
-    'booking', 'confirmed', 'confirmation',
-    'password', 'reset', 'login', 'sign in', 'account',
-    'alert', 'warning', 'urgent', 'important',
-    'interview', 'offer letter', 'job offer',
+    'otp', 'one time password', 'verification code',
+    'order', 'delivery', 'delivered', 'shipped',
+    'payment received', 'transaction', 'debited', 'credited',
+    'invoice', 'receipt', 'booking confirmed',
+    'password reset', 'login attempt', 'security alert',
+    'interview', 'offer letter', 'selected', 'rejected',
+    'your application', 'admission',
   ]
-
   if (alwaysAllow.some(k => s.includes(k))) return false
 
-  // Block only clearly promotional subjects
-  const promoSubjects = [
-    '% off', 'flat off', 'upto off', 'discount',
-    'sale', 'deal of', 'offer ends', 'limited offer',
-    'flash sale', 'mega sale', 'big sale', 'season sale',
-    'free delivery', 'free shipping', 'free trial',
-    'win ', 'winner', 'lucky draw', 'prize',
-    'coupon', 'voucher', 'cashback offer',
-    'refer and earn', 'invite and earn',
-    'new arrival', 'just launched', 'trending now',
-    'job alert', 'new jobs match', 'jobs for you',
-    'weekly digest', 'monthly digest',
-    'shop now', 'buy now', 'order now',
-    'don\'t miss', 'hurry', 'last chance', 'expires soon',
-    'unsubscribe', 'newsletter',
-    'it\'s mango season', 'summer sale', 'winter sale',
-  ]
-
-  if (promoSubjects.some(k => s.includes(k))) return true
-
-  // Block only clearly bulk sender addresses
-  const promoBulkSenders = [
+  // Block bulk sender domains
+  const bulkSenders = [
     'noreply@', 'no-reply@', 'donotreply@',
     'newsletter@', 'marketing@', 'offers@',
-    'promotions@', 'campaigns@', 'bulk@',
-    'sendgrid', 'mailchimp', 'klaviyo',
-    'hubspot', 'constantcontact', 'mailjet',
+    'promotions@', 'campaigns@',
+    'sendgrid', 'mailchimp', 'klaviyo', 'hubspot',
   ]
+  if (bulkSenders.some(k => f.includes(k))) return true
 
-  const f = from.toLowerCase()
-  if (promoBulkSenders.some(k => f.includes(k))) return true
+  // Block clearly promotional subjects
+  const promoSubjects = [
+    '% off', 'flat off', 'upto off', 'upto rs',
+    'sale', 'flash sale', 'mega sale', 'big sale',
+    'deal', 'offer', 'discount', 'coupon', 'voucher',
+    'cashback', 'free delivery', 'free shipping',
+    'win ', 'winner', 'prize', 'lucky draw',
+    'refer and earn', 'invite and earn',
+    'shop now', 'buy now', 'order now', 'tap to know more',
+    'don\'t miss', 'hurry', 'last chance', 'expires soon',
+    'new arrival', 'just launched', 'trending now',
+    'newsletter', 'weekly digest', 'monthly update',
+    'mutual funds aren\'t', 'invest in', 'start investing',
+    'earn upto', 'earn up to', 'make money',
+    'job alert', 'new jobs match', 'jobs for you',
+    'it\'s mango season', 'summer', 'your summer',
+    'upgrade your', 'upgrade now', 'get started today',
+  ]
+  if (promoSubjects.some(k => s.includes(k))) return true
 
   return false
 }
@@ -266,9 +263,8 @@ export async function GET(request: Request) {
       const snippet = detail.data.snippet || ''
       const threadId = detail.data.threadId || ''
 
-      // Skip promo emails before calling AI
-      if (isLikelyPromo(from, subject)) {
-        console.log('Skipping promo:', subject, '| from:', from)
+      if (isPromo(from, subject)) {
+        console.log('Skipping promo:', subject)
         return null
       }
 
