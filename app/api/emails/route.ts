@@ -203,10 +203,10 @@ const unixEnd = Math.floor(endOfDayIST.getTime() / 1000)
   console.log('Gmail query:', `in:inbox after:${unixStart} before:${unixEnd}`)
 
   const response = await gmail.users.messages.list({
-    userId: 'me',
-    maxResults: 50,
-    q: `in:inbox after:${unixStart} before:${unixEnd}`,
-  })
+  userId: 'me',
+  maxResults: 50,
+  q: `in:inbox after:${unixStart} before:${unixEnd} -category:promotions`,
+})
 
   console.log('Messages found:', response.data.messages?.length || 0)
 
@@ -250,7 +250,7 @@ const unixEnd = Math.floor(endOfDayIST.getTime() / 1000)
   )
 
   const top10 = emails
-  .filter(e => e.category !== 'promo')
+  .filter(e => e.category !== 'promo' && e.importance_score > 2)
   .sort((a, b) => b.importance_score - a.importance_score)
   .slice(0, 10)
 
