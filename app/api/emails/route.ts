@@ -28,24 +28,26 @@ async function summarizeEmail(subject: string, from: string, body: string) {
 
     const { text } = await generateText({
       model: groq('llama-3.3-70b-versatile'),
-      prompt: `Analyze this email and respond with ONLY a JSON object, no other text.
+      prompt: `You are an expert email analyst. Analyze this email carefully and respond with ONLY a valid JSON object.
 
-CATEGORY RULES:
-- "promo" = company/brand/noreply sender, marketing, deals, offers, newsletters, shopping, food delivery, travel, entertainment, job alerts
-- "meeting" = calendar invite, interview, meeting request, zoom/teams/meet link
-- "task" = deployment failure, error alert, action required, approval needed, deadline, bug report
-- "personal" = personal gmail address writing personally to you
-- "other" = nothing else fits
-
-IMPORTANCE: promo=1-3, personal=7-9, task=6-8, meeting=8-10
-PRIORITY: importance 1-3=low, 4-6=medium, 7-10=high
+RULES:
+- summary: Write a clear, specific 1-2 sentence summary of what this email is actually about and what action (if any) is needed. Be specific, not generic.
+- importance_score: Rate 1-10 based on urgency and relevance to the recipient
+- priority: "high" if score 7-10, "medium" if 4-6, "low" if 1-3
+- action_required: true only if the email requires the recipient to DO something
+- category: 
+  * "promo" = marketing, deals, newsletters, offers, shopping, food delivery, job alerts from companies
+  * "meeting" = calendar invite, interview scheduled, meeting request, zoom/teams/meet link
+  * "task" = error alert, approval needed, deadline, bug report, action required from a system
+  * "personal" = a real person writing directly to you from their personal email
+  * "other" = bank statements, receipts, account notifications that are not promotional
 
 Subject: ${subject}
 From: ${from}
 Body: ${cleanBody}
 
-Respond with ONLY this JSON (no markdown, no explanation):
-{"summary":"...","importance_score":5,"priority":"medium","action_required":false,"category":"other"}`,
+Respond with ONLY this JSON (no markdown, no backticks, no explanation):
+{"summary":"specific summary here","importance_score":5,"priority":"medium","action_required":false,"category":"other"}`,
     })
 
     const cleaned = text.replace(/```json|```/g, '').trim()
