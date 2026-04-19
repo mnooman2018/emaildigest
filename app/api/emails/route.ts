@@ -181,23 +181,29 @@ export async function GET(request: Request) {
 
   const gmail = google.gmail({ version: 'v1', auth })
 
-  const today = new Date()
-  const istOffset = 5.5 * 60 * 60 * 1000
-  const istDate = new Date(today.getTime() + istOffset)
-  const startOfDayIST = new Date(Date.UTC(
-    istDate.getUTCFullYear(),
-    istDate.getUTCMonth(),
-    istDate.getUTCDate(),
-    0, 0, 0
-  ) - istOffset)
-  const unixTimestamp = Math.floor(startOfDayIST.getTime() / 1000)
+  // Support custom date from query param
+const url = new URL(request.url)
+const dateParam = url.searchParams.get('date')
 
-  console.log('Gmail query:', `in:inbox after:${unixTimestamp}`)
+const targetDate = dateParam ? new Date(dateParam) : new Date()
+const istOffset = 5.5 * 60 * 60 * 1000
+const istDate = new Date(targetDate.getTime() + istOffset)
+const startOfDayIST = new Date(Date.UTC(
+  istDate.getUTCFullYear(),
+  istDate.getUTCMonth(),
+  istDate.getUTCDate(),
+  0, 0, 0
+) - istOffset)
+const endOfDayIST = new Date(startOfDayIST.getTime() + 24 * 60 * 60 * 1000)
+const unixStart = Math.floor(startOfDayIST.getTime() / 1000)
+const unixEnd = Math.floor(endOfDayIST.getTime() / 1000)
+
+  console.log('Gmail query:', `in:inbox after:${unixStart} before:${unixEnd}`)
 
   const response = await gmail.users.messages.list({
     userId: 'me',
     maxResults: 50,
-    q: `in:inbox after:${unixTimestamp}`,
+    q: `in:inbox after:${unixStart} before:${unixEnd}`,
   })
 
   console.log('Messages found:', response.data.messages?.length || 0)
