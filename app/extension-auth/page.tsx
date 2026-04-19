@@ -16,33 +16,10 @@ export default function ExtensionAuth() {
       const { data: { session } } = await supabase.auth.getSession()
 
       if (session?.access_token) {
-        setStatus('saving')
-
-        // Save to localStorage
+        // Save token to localStorage
         localStorage.setItem('ed_token', session.access_token)
-
-        // Try postMessage to opener
-        if (window.opener) {
-          try {
-            window.opener.postMessage({
-              type: 'emaildigest-token',
-              token: session.access_token,
-              email: session.user.email,
-            }, '*')
-          } catch(e) {}
-        }
-
-        // Broadcast to all extension content scripts via custom event
-        document.dispatchEvent(new CustomEvent('ed-login', {
-          detail: { token: session.access_token }
-        }))
-
+        localStorage.setItem('ed_email', session.user.email || '')
         setStatus('done')
-
-        // Show success then close
-        setTimeout(() => {
-          window.close()
-        }, 1500)
       } else {
         setStatus('error')
       }
@@ -67,12 +44,12 @@ export default function ExtensionAuth() {
             <p style={{ color: '#64748b', fontSize: '0.9rem' }}>Connecting...</p>
           </>
         )}
-        {(status === 'saving' || status === 'done') && (
+        {status === 'done' && (
           <>
             <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>✅</div>
             <p style={{ color: '#16a34a', fontSize: '1rem', fontWeight: '600' }}>Login successful!</p>
             <p style={{ color: '#64748b', fontSize: '0.82rem', marginTop: '0.5rem' }}>
-              You can close this tab and go back to Gmail
+              Go back to Gmail and click<br/><strong>"I've logged in — Load Emails"</strong>
             </p>
           </>
         )}

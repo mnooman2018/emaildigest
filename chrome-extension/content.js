@@ -92,17 +92,24 @@ function showLoginScreen() {
       const doneBtn = document.getElementById('ed-done-btn')
       if (doneBtn) {
         doneBtn.addEventListener('click', () => {
-          clearInterval(pollToken)
-          chrome.storage.local.get(['ed_token'], (result) => {
-            if (result.ed_token) {
-              authToken = result.ed_token
-              emailsData = []
-              loadEmails()
-            } else {
-              showLoginScreen()
-            }
-          })
-        })
+  clearInterval(pollToken)
+  // Read token from the extension-auth page via fetch
+  fetch(`${SITE_URL}/api/get-token`, {
+    credentials: 'include'
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.token) {
+      authToken = data.token
+      chrome.storage.local.set({ ed_token: data.token })
+      emailsData = []
+      loadEmails()
+    } else {
+      showLoginScreen()
+    }
+  })
+  .catch(() => showLoginScreen())
+})
       }
     }, 100)
   })
