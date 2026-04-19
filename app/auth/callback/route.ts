@@ -38,7 +38,9 @@ export async function GET(request: Request) {
 
       // If opened from extension popup, close window automatically
       if (isPopup) {
-  return NextResponse.redirect(`${origin}/extension-auth`)
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token || ''
+  return NextResponse.redirect(`${origin}/extension-auth?token=${token}`)
 }
 
       return NextResponse.redirect(`${origin}/`)

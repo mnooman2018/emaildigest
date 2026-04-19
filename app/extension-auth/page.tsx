@@ -1,42 +1,22 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
 
 export default function ExtensionAuth() {
   const [status, setStatus] = useState('loading')
 
   useEffect(() => {
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
+    const params = new URLSearchParams(window.location.search)
+    const token = params.get('token')
 
-    const handleAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-
-      if (session?.access_token) {
-        const token = session.access_token
-
-        // Try sending to Chrome extension
-        try {
-          // @ts-ignore
-          if (typeof chrome !== 'undefined' && chrome.runtime) {
-            // Send to all possible extension IDs via postMessage
-            window.postMessage({ type: 'ed-save-token', token }, '*')
-          }
-        } catch(e) {}
-
-        // Also save in localStorage as backup
-        localStorage.setItem('ed_token', token)
-
-        setStatus('done')
-      } else {
-        setStatus('error')
-      }
+    if (token) {
+      // Store in sessionStorage so auth-listener can read it
+      sessionStorage.setItem('ed_token', token)
+      window.postMessage({ type: 'ed-save-token', token }, '*')
+      setStatus('done')
+    } else {
+      setStatus('error')
     }
-
-    handleAuth()
   }, [])
 
   return (
