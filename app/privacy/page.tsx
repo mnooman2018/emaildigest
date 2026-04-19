@@ -30,7 +30,7 @@ export default function PrivacyPage() {
       <p>Our full source code is publicly available at <a href="https://github.com/mnooman2018/emaildigest" style={{ color: '#6366f1' }}>github.com/mnooman2018/emaildigest</a>. We use Gmail's readonly scope — we physically cannot send or delete emails.</p>
 
       <h2 style={{ fontSize: '1.2rem', fontWeight: '700', marginTop: '2rem' }}>Data deletion</h2>
-      <p>Clicking logout immediately removes all tokens from your device and you can revoke access at any time from your <a href="https://myaccount.google.com/permissions" style={{ color: '#6366f1' }}>Google Account settings</a>.</p>
+      <p>Clicking logout immediately removes all tokens from your device. You can also revoke access anytime from your <a href="https://myaccount.google.com/permissions" style={{ color: '#6366f1' }}>Google Account settings</a>.</p>
 
       <h2 style={{ fontSize: '1.2rem', fontWeight: '700', marginTop: '2rem' }}>Contact</h2>
       <p>For any privacy concerns, contact: mnooman2018@gmail.com</p>

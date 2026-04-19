@@ -248,8 +248,9 @@ const unixEnd = Math.floor(endOfDayIST.getTime() / 1000)
   )
 
   const top10 = emails
-    .sort((a, b) => b.importance_score - a.importance_score)
-    .slice(0, 10)
+  .filter(e => e.category !== 'promo')
+  .sort((a, b) => b.importance_score - a.importance_score)
+  .slice(0, 10)
 
   return NextResponse.json({ emails: top10 }, { headers: corsHeaders })
 }
