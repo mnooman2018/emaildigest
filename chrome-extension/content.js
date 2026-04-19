@@ -4,16 +4,10 @@ let panelOpen = false
 let isMaximized = false
 let emailsData = []
 let activeCategory = 'all'
-let authToken = null
 
 const categoryEmoji = { meeting: '📅', task: '✅', promo: '🏷️', personal: '👤', other: '📧' }
 const categoryColor = { meeting: '#2563eb', task: '#7c3aed', promo: '#d97706', personal: '#db2777', other: '#475569' }
 const priorityColor = { high: '#dc2626', medium: '#d97706', low: '#16a34a' }
-
-// Load token from storage on start
-chrome.storage.local.get(['ed_token'], (result) => {
-  if (result.ed_token) authToken = result.ed_token
-})
 
 function envelopeIcon() {
   return `<svg width="22" height="22" viewBox="0 0 100 70" xmlns="http://www.w3.org/2000/svg">
@@ -34,9 +28,7 @@ function showLoginScreen() {
     <div style="text-align:center;padding:2.5rem 1.5rem;">
       <div style="width:60px;height:60px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;font-size:1.8rem;">✉️</div>
       <h2 style="font-size:1.1rem;font-weight:700;color:#1e293b;margin:0 0 0.5rem;">Welcome to EmailDigest</h2>
-      <p style="font-size:0.82rem;color:#64748b;margin:0 0 2rem;line-height:1.6;">
-        AI-powered email summaries<br>right inside Gmail
-      </p>
+      <p style="font-size:0.82rem;color:#64748b;margin:0 0 2rem;line-height:1.6;">AI-powered email summaries right inside Gmail</p>
       <button id="ed-login-btn" style="
         background:linear-gradient(135deg,#6366f1,#8b5cf6);
         color:white;border:none;border-radius:12px;
@@ -45,74 +37,73 @@ function showLoginScreen() {
         box-shadow:0 4px 15px rgba(99,102,241,0.4);
         margin-bottom:0.75rem;
       ">🔗 Connect with Google</button>
-      <p style="font-size:0.7rem;color:#94a3b8;line-height:1.5;">
-        We only read your emails<br>never send or delete anything
-      </p>
+      <p style="font-size:0.7rem;color:#94a3b8;line-height:1.5;">We only read your emails — never send or delete anything</p>
     </div>
   `
 
   document.getElementById('ed-login-btn').addEventListener('click', () => {
-    const contentEl = document.getElementById('ed-content')
-    contentEl.innerHTML = `
+    document.getElementById('ed-content').innerHTML = `
       <div style="text-align:center;padding:2rem;color:#64748b;">
         <div style="font-size:2.5rem;margin-bottom:1rem;">⏳</div>
         <p style="font-size:0.9rem;font-weight:600;color:#1e293b;margin-bottom:0.5rem;">Opening Google login...</p>
-        <p style="font-size:0.75rem;color:#94a3b8;line-height:1.6;">
-          Complete the login in the new tab.<br>
-          Come back here when done.
+        <p style="font-size:0.75rem;color:#94a3b8;line-height:1.6;margin-bottom:1.5rem;">
+          Complete the login in the new tab.<br>Then click the button below.
         </p>
         <button id="ed-done-btn" style="
-          margin-top:1.5rem;
-          background:#6366f1;color:white;
+          background:#16a34a;color:white;
           border:none;border-radius:10px;
-          padding:0.6rem 1.5rem;
-          cursor:pointer;font-size:0.85rem;
-          font-weight:500;
-        ">✅ I've logged in — Load Emails</button>
+          padding:0.75rem 1.5rem;
+          cursor:pointer;font-size:0.9rem;
+          font-weight:600;width:100%;
+        ">✅ Done! Load My Emails</button>
       </div>
     `
 
-    // Open login in new tab
     chrome.tabs.create({ url: `${SITE_URL}/popup` })
 
-    // Poll for token every second
-    const pollToken = setInterval(() => {
-      chrome.storage.local.get(['ed_token'], (result) => {
-        if (result.ed_token && result.ed_token !== authToken) {
-          clearInterval(pollToken)
-          authToken = result.ed_token
-          emailsData = []
-          loadEmails()
-        }
-      })
-    }, 1000)
+    document.getElementById('ed-done-btn').addEventListener('click', () => {
+      document.getElementById('ed-content').innerHTML = `
+        <div style="text-align:center;padding:2rem;color:#64748b;">
+          <div style="font-size:2rem;margin-bottom:0.5rem;">🤖</div>
+          <p style="font-size:0.85rem;">AI is reading your emails...</p>
+          <p style="font-size:0.72rem;margin-top:0.3rem;color:#94a3b8;">This may take 20-40 seconds</p>
+        </div>`
+      fetchEmails()
+    })
+  })
+}
 
-    // Manual button as fallback
-    setTimeout(() => {
-      const doneBtn = document.getElementById('ed-done-btn')
-      if (doneBtn) {
-        doneBtn.addEventListener('click', () => {
-  clearInterval(pollToken)
-  // Read token from the extension-auth page via fetch
-  fetch(`${SITE_URL}/api/get-token`, {
-    credentials: 'include'
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.token) {
-      authToken = data.token
-      chrome.storage.local.set({ ed_token: data.token })
-      emailsData = []
-      loadEmails()
-    } else {
+async function fetchEmails() {
+  const contentEl = document.getElementById('ed-content')
+  if (!contentEl) return
+
+  try {
+    const res = await fetch(`${SITE_URL}/api/emails`, {
+      credentials: 'include'
+    })
+
+    if (res.status === 401) {
       showLoginScreen()
+      return
     }
-  })
-  .catch(() => showLoginScreen())
-})
-      }
-    }, 100)
-  })
+
+    const data = await res.json()
+
+    if (!data.emails || data.emails.length === 0) {
+      contentEl.innerHTML = `
+        <div style="text-align:center;padding:2rem;color:#64748b;">
+          <div style="font-size:2rem;margin-bottom:0.5rem;">📭</div>
+          <p style="font-size:0.85rem;">No emails found for today.</p>
+        </div>`
+      return
+    }
+
+    emailsData = data.emails
+    renderEmails()
+
+  } catch (err) {
+    showLoginScreen()
+  }
 }
 
 function renderEmails() {
@@ -167,13 +158,9 @@ function renderEmails() {
           </div>
           <div style="display:flex;gap:0.4rem;">
             <a href="https://mail.google.com/mail/u/0/#inbox/${email.threadId}" target="_blank"
-              style="padding:0.25rem 0.6rem;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;border-radius:5px;font-size:0.7rem;text-decoration:none;">
-              👁️ Open
-            </a>
+              style="padding:0.25rem 0.6rem;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;border-radius:5px;font-size:0.7rem;text-decoration:none;">👁️ Open</a>
             <a href="https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(replyTo)}&su=${encodeURIComponent('Re: '+email.subject)}" target="_blank"
-              style="padding:0.25rem 0.6rem;background:#6366f1;color:white;border:none;border-radius:5px;font-size:0.7rem;text-decoration:none;">
-              ↩️ Reply
-            </a>
+              style="padding:0.25rem 0.6rem;background:#6366f1;color:white;border:none;border-radius:5px;font-size:0.7rem;text-decoration:none;">↩️ Reply</a>
           </div>
         </div>`
     })
@@ -189,70 +176,12 @@ function renderEmails() {
   })
 }
 
-async function loadEmails() {
-  const contentEl = document.getElementById('ed-content')
-  if (!contentEl) return
-
-  if (!authToken) {
-    const stored = await new Promise(resolve => {
-      chrome.storage.local.get(['ed_token'], result => resolve(result))
-    })
-    if (stored.ed_token) {
-      authToken = stored.ed_token
-    } else {
-      showLoginScreen()
-      return
-    }
-  }
-
-  contentEl.innerHTML = `
-    <div style="text-align:center;padding:2rem;color:#64748b;">
-      <div style="font-size:2rem;margin-bottom:0.5rem;">🤖</div>
-      <p style="font-size:0.85rem;">AI is reading your emails...</p>
-      <p style="font-size:0.72rem;margin-top:0.3rem;color:#94a3b8;">This may take 20-40 seconds</p>
-    </div>`
-
-  try {
-    const res = await fetch(`${SITE_URL}/api/emails`, {
-      headers: { 'Authorization': `Bearer ${authToken}` }
-    })
-
-    if (res.status === 401) {
-      authToken = null
-      chrome.storage.local.remove(['ed_token'])
-      showLoginScreen()
-      return
-    }
-
-    const data = await res.json()
-
-    if (!data.emails || data.emails.length === 0) {
-      contentEl.innerHTML = `
-        <div style="text-align:center;padding:2rem;color:#64748b;">
-          <div style="font-size:2rem;margin-bottom:0.5rem;">📭</div>
-          <p style="font-size:0.85rem;">No emails found for today.</p>
-        </div>`
-      return
-    }
-
-    emailsData = data.emails
-    renderEmails()
-
-  } catch (err) {
-    authToken = null
-    chrome.storage.local.remove(['ed_token'])
-    showLoginScreen()
-  }
-}
-
 function createPanel() {
-  // Black toggle button
   const toggleBtn = document.createElement('div')
   toggleBtn.id = 'ed-toggle'
   toggleBtn.style.cssText = `
     position:fixed;right:0;top:50%;transform:translateY(-50%);
-    width:40px;height:90px;
-    background:#000000;
+    width:40px;height:90px;background:#000000;
     display:flex;align-items:center;justify-content:center;cursor:pointer;
     z-index:9999;border-radius:10px 0 0 10px;
     box-shadow:-2px 0 12px rgba(0,0,0,0.3);
@@ -313,8 +242,15 @@ function createPanel() {
     if (panelOpen) {
       panel.style.right = '0'
       toggleBtn.style.right = '400px'
-      toggleBtn.innerHTML = `<span style="color:white;font-size:1.2rem;font-weight:300;">✕</span>`
-      if (emailsData.length === 0) loadEmails()
+      toggleBtn.innerHTML = `<span style="color:white;font-size:1.2rem;">✕</span>`
+      if (emailsData.length === 0) {
+        document.getElementById('ed-content').innerHTML = `
+          <div style="text-align:center;padding:2rem;color:#64748b;">
+            <div style="font-size:2rem;margin-bottom:0.5rem;">🤖</div>
+            <p style="font-size:0.85rem;">Loading your emails...</p>
+          </div>`
+        fetchEmails()
+      }
     } else {
       panel.style.right = '-420px'
       toggleBtn.style.right = '0'
@@ -334,10 +270,14 @@ function createPanel() {
   })
 
   document.getElementById('ed-refresh').addEventListener('click', () => {
-    authToken = null
     emailsData = []
-    chrome.storage.local.remove(['ed_token'])
-    loadEmails()
+    document.getElementById('ed-content').innerHTML = `
+      <div style="text-align:center;padding:2rem;color:#64748b;">
+        <div style="font-size:2rem;margin-bottom:0.5rem;">🤖</div>
+        <p style="font-size:0.85rem;">AI is reading your emails...</p>
+        <p style="font-size:0.72rem;margin-top:0.3rem;color:#94a3b8;">This may take 20-40 seconds</p>
+      </div>`
+    fetchEmails()
   })
 
   document.getElementById('ed-maximize').addEventListener('click', () => {
