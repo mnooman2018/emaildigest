@@ -17,9 +17,11 @@ export default function ExtensionAuth() {
 
       if (session?.access_token) {
         setStatus('saving')
-        localStorage.setItem('ed_token', session.access_token)
-        localStorage.setItem('ed_email', session.user.email || '')
 
+        // Save to localStorage
+        localStorage.setItem('ed_token', session.access_token)
+
+        // Try postMessage to opener
         if (window.opener) {
           try {
             window.opener.postMessage({
@@ -27,13 +29,20 @@ export default function ExtensionAuth() {
               token: session.access_token,
               email: session.user.email,
             }, '*')
-          } catch(e) {
-            console.log('postMessage blocked')
-          }
+          } catch(e) {}
         }
 
+        // Broadcast to all extension content scripts via custom event
+        document.dispatchEvent(new CustomEvent('ed-login', {
+          detail: { token: session.access_token }
+        }))
+
         setStatus('done')
-        setTimeout(() => window.close(), 1200)
+
+        // Show success then close
+        setTimeout(() => {
+          window.close()
+        }, 1500)
       } else {
         setStatus('error')
       }
@@ -54,20 +63,23 @@ export default function ExtensionAuth() {
       <div style={{ textAlign: 'center', padding: '2rem' }}>
         {status === 'loading' && (
           <>
-            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+            <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>⏳</div>
             <p style={{ color: '#64748b', fontSize: '0.9rem' }}>Connecting...</p>
           </>
         )}
         {(status === 'saving' || status === 'done') && (
           <>
-            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>✅</div>
-            <p style={{ color: '#16a34a', fontSize: '0.9rem' }}>Login successful! Closing...</p>
+            <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>✅</div>
+            <p style={{ color: '#16a34a', fontSize: '1rem', fontWeight: '600' }}>Login successful!</p>
+            <p style={{ color: '#64748b', fontSize: '0.82rem', marginTop: '0.5rem' }}>
+              You can close this tab and go back to Gmail
+            </p>
           </>
         )}
         {status === 'error' && (
           <>
-            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>❌</div>
-            <p style={{ color: '#dc2626', fontSize: '0.9rem' }}>Please try again.</p>
+            <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>❌</div>
+            <p style={{ color: '#dc2626', fontSize: '0.9rem' }}>Something went wrong. Please try again.</p>
           </>
         )}
       </div>

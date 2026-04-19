@@ -10,24 +10,20 @@ const categoryEmoji = { meeting: '📅', task: '✅', promo: '🏷️', personal
 const categoryColor = { meeting: '#2563eb', task: '#7c3aed', promo: '#d97706', personal: '#db2777', other: '#475569' }
 const priorityColor = { high: '#dc2626', medium: '#d97706', low: '#16a34a' }
 
-window.addEventListener('message', (e) => {
-  if (e.data?.type === 'emaildigest-token') {
-    authToken = e.data.token
-    chrome.storage.local.set({ ed_token: authToken })
-    emailsData = []
-    loadEmails()
-  }
+// Load token from storage on start
+chrome.storage.local.get(['ed_token'], (result) => {
+  if (result.ed_token) authToken = result.ed_token
 })
 
 function envelopeIcon() {
-  return `<svg width="24" height="24" viewBox="0 0 100 70" xmlns="http://www.w3.org/2000/svg">
+  return `<svg width="22" height="22" viewBox="0 0 100 70" xmlns="http://www.w3.org/2000/svg">
     <rect x="2" y="2" width="96" height="66" rx="8" fill="white" opacity="0.9"/>
-    <polygon points="2,2 50,38 98,2" fill="rgba(99,102,241,0.8)"/>
-    <line x1="2" y1="68" x2="34" y2="36" stroke="white" stroke-width="2" opacity="0.5"/>
-    <line x1="98" y1="68" x2="66" y2="36" stroke="white" stroke-width="2" opacity="0.5"/>
-    <circle cx="30" cy="52" r="4" fill="white" opacity="0.7"/>
-    <circle cx="50" cy="57" r="4" fill="white" opacity="0.7"/>
-    <circle cx="70" cy="52" r="4" fill="white" opacity="0.7"/>
+    <polygon points="2,2 50,38 98,2" fill="rgba(255,255,255,0.6)"/>
+    <line x1="2" y1="68" x2="34" y2="36" stroke="white" stroke-width="2" opacity="0.6"/>
+    <line x1="98" y1="68" x2="66" y2="36" stroke="white" stroke-width="2" opacity="0.6"/>
+    <circle cx="30" cy="52" r="4" fill="white" opacity="0.8"/>
+    <circle cx="50" cy="57" r="4" fill="white" opacity="0.8"/>
+    <circle cx="70" cy="52" r="4" fill="white" opacity="0.8"/>
   </svg>`
 }
 
@@ -35,22 +31,22 @@ function showLoginScreen() {
   const contentEl = document.getElementById('ed-content')
   if (!contentEl) return
   contentEl.innerHTML = `
-    <div style="text-align:center;padding:2rem 1.5rem;">
-      <div style="font-size:3rem;margin-bottom:1rem;">✉️</div>
-      <h2 style="font-size:1rem;font-weight:700;color:#1e293b;margin:0 0 0.5rem;">Welcome to EmailDigest</h2>
-      <p style="font-size:0.82rem;color:#64748b;margin:0 0 1.5rem;line-height:1.6;">
-        AI-powered email summaries right inside Gmail
+    <div style="text-align:center;padding:2.5rem 1.5rem;">
+      <div style="width:60px;height:60px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;font-size:1.8rem;">✉️</div>
+      <h2 style="font-size:1.1rem;font-weight:700;color:#1e293b;margin:0 0 0.5rem;">Welcome to EmailDigest</h2>
+      <p style="font-size:0.82rem;color:#64748b;margin:0 0 2rem;line-height:1.6;">
+        AI-powered email summaries<br>right inside Gmail
       </p>
       <button id="ed-login-btn" style="
         background:linear-gradient(135deg,#6366f1,#8b5cf6);
         color:white;border:none;border-radius:12px;
-        padding:0.75rem 1.5rem;font-size:0.88rem;
-        cursor:pointer;width:100%;font-weight:500;
-        box-shadow:0 4px 12px rgba(99,102,241,0.3);
+        padding:0.875rem 1.5rem;font-size:0.9rem;
+        cursor:pointer;width:100%;font-weight:600;
+        box-shadow:0 4px 15px rgba(99,102,241,0.4);
         margin-bottom:0.75rem;
       ">🔗 Connect with Google</button>
-      <p style="font-size:0.7rem;color:#94a3b8;">
-        We only read your emails — never send or delete anything
+      <p style="font-size:0.7rem;color:#94a3b8;line-height:1.5;">
+        We only read your emails<br>never send or delete anything
       </p>
     </div>
   `
@@ -59,65 +55,56 @@ function showLoginScreen() {
     const contentEl = document.getElementById('ed-content')
     contentEl.innerHTML = `
       <div style="text-align:center;padding:2rem;color:#64748b;">
-        <div style="font-size:2rem;margin-bottom:1rem;">⏳</div>
-        <p style="font-size:0.85rem;font-weight:500;color:#1e293b;">Connecting to Google...</p>
-        <p style="font-size:0.72rem;margin-top:0.5rem;color:#94a3b8;line-height:1.6;">
-          Please complete login in the popup.<br>It will close automatically when done.
+        <div style="font-size:2.5rem;margin-bottom:1rem;">⏳</div>
+        <p style="font-size:0.9rem;font-weight:600;color:#1e293b;margin-bottom:0.5rem;">Opening Google login...</p>
+        <p style="font-size:0.75rem;color:#94a3b8;line-height:1.6;">
+          Complete the login in the new tab.<br>
+          Come back here when done.
         </p>
+        <button id="ed-done-btn" style="
+          margin-top:1.5rem;
+          background:#6366f1;color:white;
+          border:none;border-radius:10px;
+          padding:0.6rem 1.5rem;
+          cursor:pointer;font-size:0.85rem;
+          font-weight:500;
+        ">✅ I've logged in — Load Emails</button>
       </div>
     `
 
-    const loginWin = window.open(
-      `${SITE_URL}/popup`,
-      'emaildigest-login',
-      'width=480,height=580,left=400,top=80,toolbar=no,menubar=no'
-    )
+    // Open login in new tab
+    chrome.tabs.create({ url: `${SITE_URL}/popup` })
 
-    const checkClosed = setInterval(() => {
-      try {
-        if (loginWin && loginWin.closed) {
-          clearInterval(checkClosed)
-          setTimeout(() => {
-            if (authToken) {
+    // Poll for token every second
+    const pollToken = setInterval(() => {
+      chrome.storage.local.get(['ed_token'], (result) => {
+        if (result.ed_token && result.ed_token !== authToken) {
+          clearInterval(pollToken)
+          authToken = result.ed_token
+          emailsData = []
+          loadEmails()
+        }
+      })
+    }, 1000)
+
+    // Manual button as fallback
+    setTimeout(() => {
+      const doneBtn = document.getElementById('ed-done-btn')
+      if (doneBtn) {
+        doneBtn.addEventListener('click', () => {
+          clearInterval(pollToken)
+          chrome.storage.local.get(['ed_token'], (result) => {
+            if (result.ed_token) {
+              authToken = result.ed_token
               emailsData = []
               loadEmails()
-              return
+            } else {
+              showLoginScreen()
             }
-            chrome.storage.local.get(['ed_token'], (result) => {
-              if (result.ed_token) {
-                authToken = result.ed_token
-                emailsData = []
-                loadEmails()
-              } else {
-                const tempFrame = document.createElement('iframe')
-                tempFrame.src = `${SITE_URL}/extension-auth`
-                tempFrame.style.display = 'none'
-                document.body.appendChild(tempFrame)
-                tempFrame.onload = () => {
-                  try {
-                    const token = tempFrame.contentWindow?.localStorage.getItem('ed_token')
-                    document.body.removeChild(tempFrame)
-                    if (token) {
-                      authToken = token
-                      chrome.storage.local.set({ ed_token: token })
-                      emailsData = []
-                      loadEmails()
-                    } else {
-                      showLoginScreen()
-                    }
-                  } catch(e) {
-                    document.body.removeChild(tempFrame)
-                    showLoginScreen()
-                  }
-                }
-              }
-            })
-          }, 1500)
-        }
-      } catch(e) {
-        clearInterval(checkClosed)
+          })
+        })
       }
-    }, 500)
+    }, 100)
   })
 }
 
@@ -252,13 +239,16 @@ async function loadEmails() {
 }
 
 function createPanel() {
+  // Black toggle button
   const toggleBtn = document.createElement('div')
   toggleBtn.id = 'ed-toggle'
   toggleBtn.style.cssText = `
     position:fixed;right:0;top:50%;transform:translateY(-50%);
-    width:40px;height:90px;background:linear-gradient(135deg,#6366f1,#8b5cf6);
+    width:40px;height:90px;
+    background:#000000;
     display:flex;align-items:center;justify-content:center;cursor:pointer;
-    z-index:9999;border-radius:10px 0 0 10px;box-shadow:-2px 0 12px rgba(99,102,241,0.3);
+    z-index:9999;border-radius:10px 0 0 10px;
+    box-shadow:-2px 0 12px rgba(0,0,0,0.3);
   `
   toggleBtn.innerHTML = envelopeIcon()
 
@@ -316,7 +306,7 @@ function createPanel() {
     if (panelOpen) {
       panel.style.right = '0'
       toggleBtn.style.right = '400px'
-      toggleBtn.innerHTML = `<span style="color:white;font-size:1.2rem;">✕</span>`
+      toggleBtn.innerHTML = `<span style="color:white;font-size:1.2rem;font-weight:300;">✕</span>`
       if (emailsData.length === 0) loadEmails()
     } else {
       panel.style.right = '-420px'
