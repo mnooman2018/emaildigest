@@ -181,7 +181,7 @@ function renderEmails() {
   }
 
   const timeFiltered = getFilteredByTime(emailsData)
-  const categories = ['all', 'meeting', 'task', 'promo', 'personal', 'other']
+  const categories = ['all', 'meeting', 'task', 'personal', 'other']
   const count = cat => cat === 'all' ? timeFiltered.length : timeFiltered.filter(e => e.category === cat).length
   const filtered = activeCategory === 'all' ? timeFiltered : timeFiltered.filter(e => e.category === activeCategory)
   const urgentEmails = timeFiltered.filter(e => e.action_required || e.importance_score >= 8)
@@ -247,9 +247,10 @@ function renderEmailCard(email) {
         <span style="color:#d97706;">⭐ ${email.importance_score}/10</span>
         <span style="color:#94a3b8;">${new Date(email.date).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
       </div>
-      <div style="background:#f1f5f9;border-radius:6px;padding:0.4rem 0.6rem;margin-bottom:0.5rem;font-size:0.75rem;color:#475569;">
-        <span style="color:#6366f1;font-weight:bold;font-size:0.65rem;">AI SUMMARY · </span>${email.summary}
-      </div>
+      <div style="background:#f1f5f9;border-radius:6px;padding:0.5rem 0.6rem;margin-bottom:0.5rem;font-size:0.78rem;color:#475569;line-height:1.6;">
+  <div style="color:#6366f1;font-weight:bold;font-size:0.65rem;margin-bottom:0.3rem;">AI SUMMARY</div>
+  <div>${email.summary}</div>
+</div>
       <div style="display:flex;gap:0.4rem;">
         <a href="https://mail.google.com/mail/u/0/#inbox/${email.threadId}" target="_blank"
           style="padding:0.25rem 0.6rem;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;border-radius:5px;font-size:0.7rem;text-decoration:none;">👁️ Open</a>
