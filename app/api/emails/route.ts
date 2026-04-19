@@ -102,60 +102,54 @@ function extractBody(payload: any): { text: string; html: string } {
 
 // Check if email is promotional using AI category + heuristics
 function isLikelyPromo(from: string, subject: string): boolean {
-  const f = from.toLowerCase()
   const s = subject.toLowerCase()
 
-  // If sender contains any of these it's promo
-  const promoFromPatterns = [
-    'noreply', 'no-reply', 'donotreply', 'do-not-reply',
-    'newsletter', 'marketing', 'offers', 'deals', 'promo',
-    'notification', 'notify', 'alert@', 'news@', 'info@',
-    'hello@', 'team@', 'support@', 'update@', 'updates@',
-    'mail@', 'email@', 'contact@', 'sales@', 'service@',
-    'digest@', 'weekly@', 'monthly@', 'daily@',
-    // Shopping & delivery
-    'swiggy', 'zomato', 'bigbasket', 'blinkit', 'zepto', 'dunzo',
-    'amazon', 'flipkart', 'myntra', 'ajio', 'meesho', 'snapdeal',
-    'nykaa', 'purplle', 'mamaearth', 'boat-lifestyle', 'noise',
-    // Food & lifestyle
-    'dominos', 'pizzahut', 'kfc', 'mcdonalds', 'starbucks',
-    'nobero', 'wow ', 'mcaffeine', 'plum', 'minimalist',
-    // Finance & banking
-    'kotak', 'hdfcbank', 'icicibank', 'axisbank', 'sbicard',
-    'bajajfinserv', 'paytm', 'phonepe', 'mobikwik', 'freecharge',
-    'groww', 'zerodha', 'upstox', 'angelone', 'cred',
-    // Jobs & education
-    'unstop', 'internshala', 'naukri', 'linkedin', 'indeed',
-    'hackerearth', 'hackerrank', 'leetcode', 'codechef',
-    'byjus', 'unacademy', 'vedantu', 'upgrad', 'coursera',
-    // Social & tech
-    'instagram', 'facebook', 'twitter', 'youtube', 'snapchat',
-    'heygen', 'canva', 'notion', 'slack', 'zoom', 'figma',
-    'apple', 'google', 'microsoft', 'icloud',
-    // Travel & entertainment
-    'goibibo', 'makemytrip', 'ixigo', 'cleartrip', 'yatra',
-    'hotstar', 'netflix', 'spotify', 'prime', 'jiocinema',
-    // Generic bulk mail indicators
-    'bulk', 'mass', 'campaign', 'sendgrid', 'mailchimp',
-    'klaviyo', 'hubspot', 'constantcontact', 'mailjet',
+  // ALWAYS ALLOW these — transactional emails that are always important
+  const alwaysAllow = [
+    'otp', 'one time password', 'verification code', 'verify',
+    'order', 'delivery', 'delivered', 'shipped', 'dispatch',
+    'payment', 'transaction', 'debit', 'credit', 'paid',
+    'invoice', 'receipt', 'bill', 'statement',
+    'booking', 'confirmed', 'confirmation',
+    'password', 'reset', 'login', 'sign in', 'account',
+    'alert', 'warning', 'urgent', 'important',
+    'interview', 'offer letter', 'job offer',
   ]
 
-  const promoSubjectPatterns = [
-    'offer', '% off', 'discount', 'sale', 'deal', 'free ',
-    'win ', 'winner', 'lucky', 'prize', 'congratulations',
-    'limited time', 'expires', 'last chance', 'hurry',
-    'subscribe', 'unsubscribe', 'coupon', 'voucher', 'cashback',
-    'earn ', 'reward', 'refer', 'invite', 'join now',
+  if (alwaysAllow.some(k => s.includes(k))) return false
+
+  // Block only clearly promotional subjects
+  const promoSubjects = [
+    '% off', 'flat off', 'upto off', 'discount',
+    'sale', 'deal of', 'offer ends', 'limited offer',
     'flash sale', 'mega sale', 'big sale', 'season sale',
-    'new arrival', 'just launched', 'trending', 'bestseller',
-    'job alert', 'new jobs match', 'hiring now', 'apply now',
-    'weekly digest', 'monthly digest', 'newsletter',
-    'tap to know', 'click here', 'shop now', 'buy now',
-    'upgrade now', 'get started', 'don\'t miss',
+    'free delivery', 'free shipping', 'free trial',
+    'win ', 'winner', 'lucky draw', 'prize',
+    'coupon', 'voucher', 'cashback offer',
+    'refer and earn', 'invite and earn',
+    'new arrival', 'just launched', 'trending now',
+    'job alert', 'new jobs match', 'jobs for you',
+    'weekly digest', 'monthly digest',
+    'shop now', 'buy now', 'order now',
+    'don\'t miss', 'hurry', 'last chance', 'expires soon',
+    'unsubscribe', 'newsletter',
+    'it\'s mango season', 'summer sale', 'winter sale',
   ]
 
-  if (promoFromPatterns.some(p => f.includes(p))) return true
-  if (promoSubjectPatterns.some(p => s.includes(p))) return true
+  if (promoSubjects.some(k => s.includes(k))) return true
+
+  // Block only clearly bulk sender addresses
+  const promoBulkSenders = [
+    'noreply@', 'no-reply@', 'donotreply@',
+    'newsletter@', 'marketing@', 'offers@',
+    'promotions@', 'campaigns@', 'bulk@',
+    'sendgrid', 'mailchimp', 'klaviyo',
+    'hubspot', 'constantcontact', 'mailjet',
+  ]
+
+  const f = from.toLowerCase()
+  if (promoBulkSenders.some(k => f.includes(k))) return true
+
   return false
 }
 
