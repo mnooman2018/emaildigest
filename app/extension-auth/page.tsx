@@ -16,9 +16,8 @@ export default function ExtensionAuth() {
       const { data: { session } } = await supabase.auth.getSession()
 
       if (session?.access_token) {
-        // Save token to localStorage
+        // Save token to localStorage with the site's origin
         localStorage.setItem('ed_token', session.access_token)
-        localStorage.setItem('ed_email', session.user.email || '')
         setStatus('done')
       } else {
         setStatus('error')
@@ -49,14 +48,14 @@ export default function ExtensionAuth() {
             <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>✅</div>
             <p style={{ color: '#16a34a', fontSize: '1rem', fontWeight: '600' }}>Login successful!</p>
             <p style={{ color: '#64748b', fontSize: '0.82rem', marginTop: '0.5rem' }}>
-              Go back to Gmail and click<br/><strong>"I've logged in — Load Emails"</strong>
+              Go back to Gmail and click<br/><strong>"Done! Load My Emails"</strong>
             </p>
           </>
         )}
         {status === 'error' && (
           <>
             <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>❌</div>
-            <p style={{ color: '#dc2626', fontSize: '0.9rem' }}>Something went wrong. Please try again.</p>
+            <p style={{ color: '#dc2626', fontSize: '0.9rem' }}>Please try again.</p>
           </>
         )}
       </div>

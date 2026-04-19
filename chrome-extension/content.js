@@ -59,7 +59,7 @@ function showLoginScreen() {
       </div>
     `
 
-    chrome.tabs.create({ url: `${SITE_URL}/popup` })
+    window.open(`${SITE_URL}/popup`, '_blank')
 
     document.getElementById('ed-done-btn').addEventListener('click', () => {
       document.getElementById('ed-content').innerHTML = `
@@ -78,9 +78,26 @@ async function fetchEmails() {
   if (!contentEl) return
 
   try {
-    const res = await fetch(`${SITE_URL}/api/emails`, {
+    // First try with credentials (session cookie)
+    let res = await fetch(`${SITE_URL}/api/emails`, {
       credentials: 'include'
     })
+
+    // If that fails, try reading token from extension-auth page
+    if (res.status === 401) {
+      const tokenRes = await fetch(`${SITE_URL}/api/get-token`, {
+        credentials: 'include'
+      })
+      
+      if (tokenRes.ok) {
+        const tokenData = await tokenRes.json()
+        if (tokenData.token) {
+          res = await fetch(`${SITE_URL}/api/emails`, {
+            headers: { 'Authorization': `Bearer ${tokenData.token}` }
+          })
+        }
+      }
+    }
 
     if (res.status === 401) {
       showLoginScreen()
