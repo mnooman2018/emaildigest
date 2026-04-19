@@ -7,8 +7,8 @@ export default async function PopupPage() {
 
   // Already logged in — go to extension-auth to send token to panel
   if (session) {
-    redirect('/extension-auth')
-  }
+  redirect(`/extension-auth?token=${session.access_token}`)
+}
 
   async function handleGoogleLogin() {
     "use server";
