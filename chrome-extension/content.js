@@ -4,10 +4,16 @@ let panelOpen = false
 let isMaximized = false
 let emailsData = []
 let activeCategory = 'all'
+let savedToken = null
 
 const categoryEmoji = { meeting: '📅', task: '✅', promo: '🏷️', personal: '👤', other: '📧' }
 const categoryColor = { meeting: '#2563eb', task: '#7c3aed', promo: '#d97706', personal: '#db2777', other: '#475569' }
 const priorityColor = { high: '#dc2626', medium: '#d97706', low: '#16a34a' }
+
+// Load saved token on start
+chrome.storage.local.get(['ed_token'], (result) => {
+  if (result.ed_token) savedToken = result.ed_token
+})
 
 function envelopeIcon() {
   return `<svg width="22" height="22" viewBox="0 0 100 70" xmlns="http://www.w3.org/2000/svg">
@@ -61,14 +67,30 @@ function showLoginScreen() {
 
     window.open(`${SITE_URL}/popup`, '_blank')
 
-    document.getElementById('ed-done-btn').addEventListener('click', () => {
+    document.getElementById('ed-done-btn').addEventListener('click', async () => {
       document.getElementById('ed-content').innerHTML = `
         <div style="text-align:center;padding:2rem;color:#64748b;">
           <div style="font-size:2rem;margin-bottom:0.5rem;">🤖</div>
-          <p style="font-size:0.85rem;">AI is reading your emails...</p>
-          <p style="font-size:0.72rem;margin-top:0.3rem;color:#94a3b8;">This may take 20-40 seconds</p>
+          <p style="font-size:0.85rem;">Loading your emails...</p>
         </div>`
-      fetchEmails()
+      
+      // Get token from storage (saved by extension-auth page via background)
+      chrome.storage.local.get(['ed_token'], async (result) => {
+        if (result.ed_token) {
+          savedToken = result.ed_token
+          await fetchEmails()
+        } else {
+          // Token not in storage yet, show error
+          document.getElementById('ed-content').innerHTML = `
+            <div style="text-align:center;padding:2rem;color:#64748b;">
+              <div style="font-size:2rem;margin-bottom:0.5rem;">❌</div>
+              <p style="font-size:0.85rem;color:#dc2626;">Login not detected.</p>
+              <p style="font-size:0.75rem;color:#94a3b8;margin-top:0.5rem;">Make sure you completed login in the new tab.</p>
+              <button id="ed-retry" style="margin-top:1rem;background:#6366f1;color:white;border:none;border-radius:8px;padding:0.5rem 1rem;cursor:pointer;font-size:0.82rem;">Try Again</button>
+            </div>`
+          document.getElementById('ed-retry')?.addEventListener('click', () => showLoginScreen())
+        }
+      })
     })
   })
 }
@@ -77,29 +99,31 @@ async function fetchEmails() {
   const contentEl = document.getElementById('ed-content')
   if (!contentEl) return
 
+  if (!savedToken) {
+    const result = await new Promise(resolve => chrome.storage.local.get(['ed_token'], resolve))
+    savedToken = result.ed_token
+  }
+
+  if (!savedToken) {
+    showLoginScreen()
+    return
+  }
+
+  contentEl.innerHTML = `
+    <div style="text-align:center;padding:2rem;color:#64748b;">
+      <div style="font-size:2rem;margin-bottom:0.5rem;">🤖</div>
+      <p style="font-size:0.85rem;">AI is reading your emails...</p>
+      <p style="font-size:0.72rem;margin-top:0.3rem;color:#94a3b8;">This may take 20-40 seconds</p>
+    </div>`
+
   try {
-    // First try with credentials (session cookie)
-    let res = await fetch(`${SITE_URL}/api/emails`, {
-      credentials: 'include'
+    const res = await fetch(`${SITE_URL}/api/emails`, {
+      headers: { 'Authorization': `Bearer ${savedToken}` }
     })
 
-    // If that fails, try reading token from extension-auth page
     if (res.status === 401) {
-      const tokenRes = await fetch(`${SITE_URL}/api/get-token`, {
-        credentials: 'include'
-      })
-      
-      if (tokenRes.ok) {
-        const tokenData = await tokenRes.json()
-        if (tokenData.token) {
-          res = await fetch(`${SITE_URL}/api/emails`, {
-            headers: { 'Authorization': `Bearer ${tokenData.token}` }
-          })
-        }
-      }
-    }
-
-    if (res.status === 401) {
+      savedToken = null
+      chrome.storage.local.remove(['ed_token'])
       showLoginScreen()
       return
     }
@@ -119,6 +143,8 @@ async function fetchEmails() {
     renderEmails()
 
   } catch (err) {
+    savedToken = null
+    chrome.storage.local.remove(['ed_token'])
     showLoginScreen()
   }
 }
@@ -184,7 +210,6 @@ function renderEmails() {
   }
 
   contentEl.innerHTML = html
-
   document.querySelectorAll('#ed-tabs button').forEach(btn => {
     btn.addEventListener('click', () => {
       activeCategory = btn.dataset.cat
@@ -260,14 +285,7 @@ function createPanel() {
       panel.style.right = '0'
       toggleBtn.style.right = '400px'
       toggleBtn.innerHTML = `<span style="color:white;font-size:1.2rem;">✕</span>`
-      if (emailsData.length === 0) {
-        document.getElementById('ed-content').innerHTML = `
-          <div style="text-align:center;padding:2rem;color:#64748b;">
-            <div style="font-size:2rem;margin-bottom:0.5rem;">🤖</div>
-            <p style="font-size:0.85rem;">Loading your emails...</p>
-          </div>`
-        fetchEmails()
-      }
+      if (emailsData.length === 0) fetchEmails()
     } else {
       panel.style.right = '-420px'
       toggleBtn.style.right = '0'
@@ -288,12 +306,6 @@ function createPanel() {
 
   document.getElementById('ed-refresh').addEventListener('click', () => {
     emailsData = []
-    document.getElementById('ed-content').innerHTML = `
-      <div style="text-align:center;padding:2rem;color:#64748b;">
-        <div style="font-size:2rem;margin-bottom:0.5rem;">🤖</div>
-        <p style="font-size:0.85rem;">AI is reading your emails...</p>
-        <p style="font-size:0.72rem;margin-top:0.3rem;color:#94a3b8;">This may take 20-40 seconds</p>
-      </div>`
     fetchEmails()
   })
 

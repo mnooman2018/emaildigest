@@ -12,6 +12,9 @@
     "https://mail.google.com/*",
     "https://emaildigest-kappa.vercel.app/*"
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
       "matches": ["https://mail.google.com/*"],

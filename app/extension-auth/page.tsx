@@ -16,8 +16,20 @@ export default function ExtensionAuth() {
       const { data: { session } } = await supabase.auth.getSession()
 
       if (session?.access_token) {
-        // Save token to localStorage with the site's origin
-        localStorage.setItem('ed_token', session.access_token)
+        const token = session.access_token
+
+        // Try sending to Chrome extension
+        try {
+          // @ts-ignore
+          if (typeof chrome !== 'undefined' && chrome.runtime) {
+            // Send to all possible extension IDs via postMessage
+            window.postMessage({ type: 'ed-save-token', token }, '*')
+          }
+        } catch(e) {}
+
+        // Also save in localStorage as backup
+        localStorage.setItem('ed_token', token)
+
         setStatus('done')
       } else {
         setStatus('error')
