@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { google } from 'googleapis'
@@ -8,7 +9,7 @@ import { generateText } from 'ai'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 }
 
 export async function OPTIONS() {
@@ -107,42 +108,63 @@ function extractBody(payload: any): { text: string; html: string } {
 }
 
 export async function GET(request: Request) {
-  const cookieStore = await cookies()
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll() },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options))
+  const authHeader = request.headers.get('Authorization')
+  const bearerToken = authHeader?.replace('Bearer ', '')
+
+  console.log('Bearer token present:', !!bearerToken)
+
+  let userId: string | null = null
+
+  if (bearerToken) {
+    // Use service role client to verify token
+    const adminClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+    const { data: { user }, error } = await adminClient.auth.getUser(bearerToken)
+    console.log('Bearer auth user:', user?.id, 'error:', error?.message)
+    if (user) userId = user.id
+  }
+
+  if (!userId) {
+    // Fall back to cookie session
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() { return cookieStore.getAll() },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options))
+          },
         },
-      },
-    }
+      }
+    )
+    const { data: { session } } = await supabase.auth.getSession()
+    console.log('Cookie session user:', session?.user?.id)
+    if (session?.user?.id) userId = session.user.id
+  }
+
+  if (!userId) {
+    console.log('No user found - returning 401')
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401, headers: corsHeaders })
+  }
+
+  // Use admin client to query gmail_connections
+  const adminClient = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  const authHeader = request.headers.get('Authorization')
-const bearerToken = authHeader?.replace('Bearer ', '')
-
-let session = null
-if (bearerToken) {
-  const { data: { user } } = await supabase.auth.getUser(bearerToken)
-  if (user) session = { user, provider_token: null }
-} else {
-  const { data } = await supabase.auth.getSession()
-  session = data.session
-}
-
-if (!session) {
-  return NextResponse.json({ error: 'Not authenticated' }, { status: 401, headers: corsHeaders })
-}
-
-  const { data: conn } = await supabase
+  const { data: conn, error: connError } = await adminClient
     .from('gmail_connections')
     .select('access_token, refresh_token')
-    .eq('user_id', session.user.id)
+    .eq('user_id', userId)
     .single()
+
+  console.log('Gmail conn found:', !!conn, 'error:', connError?.message)
 
   if (!conn) {
     return NextResponse.json({ error: 'Gmail not connected' }, { status: 401, headers: corsHeaders })
@@ -170,7 +192,7 @@ if (!session) {
   ) - istOffset)
   const unixTimestamp = Math.floor(startOfDayIST.getTime() / 1000)
 
-  console.log('Gmail query:', `in:inbox after:${unixTimestamp}`, '=', new Date(unixTimestamp * 1000).toISOString())
+  console.log('Gmail query:', `in:inbox after:${unixTimestamp}`)
 
   const response = await gmail.users.messages.list({
     userId: 'me',

@@ -20,6 +20,10 @@
       "matches": ["https://mail.google.com/*"],
       "js": ["content.js"],
       "css": ["styles.css"]
+    },
+    {
+      "matches": ["https://emaildigest-kappa.vercel.app/*"],
+      "js": ["auth-listener.js"]
     }
   ],
   "action": {
