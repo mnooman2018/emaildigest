@@ -34,14 +34,12 @@ export async function GET(request: Request) {
           access_token: session.provider_token,
           refresh_token: session.provider_refresh_token,
         }, { onConflict: 'user_id' })
-      }
 
-      // If opened from extension popup, close window automatically
-      if (isPopup) {
-  const { data: { session } } = await supabase.auth.getSession()
-  const token = session?.access_token || ''
-  return NextResponse.redirect(`${origin}/extension-auth?token=${token}`)
-}
+        if (isPopup) {
+          const token = session.access_token
+          return NextResponse.redirect(`${origin}/extension-auth?token=${token}`)
+        }
+      }
 
       return NextResponse.redirect(`${origin}/`)
     }
