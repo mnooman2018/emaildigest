@@ -204,9 +204,20 @@ function renderEmails() {
 
   if (urgentEmails.length > 0 && activeCategory === 'all') {
     html += `<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:0.6rem;margin-bottom:0.75rem;">
-      <div style="font-size:0.7rem;font-weight:bold;color:#dc2626;margin-bottom:0.3rem;">🚨 URGENT ACTION NEEDED</div>`
+      <div style="font-size:0.7rem;font-weight:bold;color:#dc2626;margin-bottom:0.4rem;">🚨 URGENT ACTION NEEDED</div>`
     urgentEmails.forEach(e => {
-      html += `<div style="font-size:0.7rem;color:#b91c1c;padding:0.2rem 0;border-bottom:1px solid #fecaca;">· ${e.subject.slice(0,45)}${e.subject.length>45?'...':''}</div>`
+      html += `
+        <a href="https://mail.google.com/mail/u/0/#inbox/${e.threadId}" target="_blank" style="
+          display:block;
+          font-size:0.72rem;color:#b91c1c;
+          padding:0.3rem 0.4rem;
+          border-bottom:1px solid #fecaca;
+          text-decoration:none;
+          border-radius:4px;
+          cursor:pointer;
+        " onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='transparent'">
+          🔴 ${e.subject.slice(0,50)}${e.subject.length>50?'...':''}
+        </a>`
     })
     html += `</div>`
   }
