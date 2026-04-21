@@ -11,9 +11,9 @@ let timeFrom = '00:00'
 let timeTo = '23:59'
 let activeView = 'emails'
 
-const categoryColor = { meeting: '#2563eb', task: '#7c3aed', personal: '#db2777', other: '#475569' }
+const categoryColor = { meeting: '#2563eb', task: '#7c3aed', personal: '#db2777', other: '#475569', promo: '#92400e' }
 const priorityColor = { high: '#dc2626', medium: '#d97706', low: '#16a34a' }
-const categoryOrder = { meeting: 1, task: 2, personal: 3, other: 4 }
+const categoryOrder = { meeting: 1, task: 2, personal: 3, other: 4, promo: 5 }
 
 chrome.storage.local.get(['ed_token', 'ed_pinned'], (result) => {
   if (result.ed_token) savedToken = result.ed_token
@@ -32,7 +32,6 @@ function envelopeIcon() {
   </svg>`
 }
 
-// ── Hide/show header buttons depending on login state ──────────────────────
 function setHeaderButtons(loggedIn) {
   const refreshBtn = document.getElementById('ed-refresh')
   const logoutBtn = document.getElementById('ed-logout')
@@ -41,7 +40,7 @@ function setHeaderButtons(loggedIn) {
 }
 
 function showLoginScreen() {
-  setHeaderButtons(false) // hide Logout + Refresh on login screen
+  setHeaderButtons(false)
   const contentEl = document.getElementById('ed-content')
   if (!contentEl) return
   contentEl.innerHTML = `
@@ -84,7 +83,6 @@ function showLoginScreen() {
       </div>
     `
 
-    // Open the login popup
     window.open(`${SITE_URL}/popup`, '_blank')
 
     document.getElementById('ed-cancel-btn').addEventListener('click', () => {
@@ -92,11 +90,9 @@ function showLoginScreen() {
     })
 
     document.getElementById('ed-done-btn').addEventListener('click', async () => {
-      // Show checking spinner
       document.getElementById('ed-done-btn').textContent = '⏳ Checking...'
       document.getElementById('ed-done-btn').disabled = true
 
-      // Poll chrome.storage up to 10 times (5 seconds) waiting for token
       let token = null
       for (let i = 0; i < 10; i++) {
         const result = await new Promise(resolve =>
@@ -112,10 +108,9 @@ function showLoginScreen() {
       if (token) {
         savedToken = token
         emailsData = []
-        setHeaderButtons(true) // show Logout + Refresh now
+        setHeaderButtons(true)
         await fetchEmails()
       } else {
-        // Token not found — show helpful message
         document.getElementById('ed-content').innerHTML = `
           <div style="text-align:center;padding:2rem;color:#64748b;">
             <div style="font-size:2.5rem;margin-bottom:1rem;">⚠️</div>
@@ -245,7 +240,7 @@ function renderEmails() {
   const contentEl = document.getElementById('ed-content')
   if (!contentEl) return
 
-  setHeaderButtons(true) // make sure buttons are visible when emails are shown
+  setHeaderButtons(true)
 
   const toolbar = renderToolbar()
 
@@ -267,17 +262,22 @@ function renderEmails() {
 
   const timeFiltered = getFilteredByTime(emailsData)
   const categories = ['all', 'meeting', 'task', 'personal', 'other']
-  const count = cat => cat === 'all' ? timeFiltered.length : timeFiltered.filter(e => e.category === cat).length
+  const count = cat => cat === 'all'
+    ? timeFiltered.length
+    : timeFiltered.filter(e => e.category === cat).length
 
   const categoryFiltered = activeCategory === 'all'
     ? timeFiltered
     : timeFiltered.filter(e => e.category === activeCategory)
 
   const filtered = sortEmails(categoryFiltered)
-  const urgentEmails = sortEmails(timeFiltered.filter(e => e.action_required || e.importance_score >= 8))
+  const urgentEmails = sortEmails(
+    timeFiltered.filter(e => e.action_required || e.importance_score >= 8)
+  )
 
   let html = toolbar
 
+  // ── Category filter buttons ──
   html += `<div style="display:flex;gap:0.3rem;flex-wrap:wrap;padding:0.5rem 0.75rem;background:#fff;border-bottom:1px solid #e2e8f0;">`
   categories.forEach(cat => {
     html += `<button data-cat="${cat}" style="
@@ -286,12 +286,13 @@ function renderEmails() {
       background:${activeCategory === cat ? '#6366f1' : '#fff'};
       color:${activeCategory === cat ? 'white' : '#64748b'};
       font-weight:${activeCategory === cat ? 'bold' : 'normal'};
-    ">${cat === 'all' ? '📬' : categoryEmoji[cat]} ${cat.charAt(0).toUpperCase()+cat.slice(1)} (${count(cat)})</button>`
+    ">${cat.charAt(0).toUpperCase() + cat.slice(1)} (${count(cat)})</button>`
   })
   html += `</div>`
 
   html += `<div style="padding:0.75rem;">`
 
+  // ── Urgent banner ──
   if (urgentEmails.length > 0 && activeCategory === 'all') {
     html += `
       <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:0.75rem;margin-bottom:0.75rem;">
@@ -306,13 +307,14 @@ function renderEmails() {
           padding:0.3rem 0.4rem;border-bottom:1px solid #fecaca;
           text-decoration:none;border-radius:4px;
         " onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='transparent'">
-          🔴 <span style="flex:1;">${e.subject.slice(0,55)}${e.subject.length>55?'...':''}</span>
-          <span style="font-size:0.65rem;color:#9ca3af;white-space:nowrap;">${categoryEmoji[e.category]} ${e.category}</span>
+          🔴 <span style="flex:1;">${e.subject.slice(0, 55)}${e.subject.length > 55 ? '...' : ''}</span>
+          <span style="font-size:0.65rem;color:#9ca3af;white-space:nowrap;">${e.category}</span>
         </a>`
     })
     html += `</div>`
   }
 
+  // ── No emails ──
   if (filtered.length === 0) {
     html += `
       <div style="text-align:center;padding:2rem;color:#64748b;">
@@ -321,6 +323,7 @@ function renderEmails() {
       </div>`
   } else {
     if (activeCategory === 'all') {
+      // ── Grouped by category ──
       const groups = ['meeting', 'task', 'personal', 'other']
       groups.forEach(cat => {
         const groupEmails = filtered.filter(e => e.category === cat)
@@ -332,7 +335,7 @@ function renderEmails() {
             padding:0.3rem 0.2rem;margin-bottom:0.4rem;margin-top:0.2rem;
             border-bottom:2px solid ${categoryColor[cat]}30;
           ">
-            ${categoryEmoji[cat]} ${cat.charAt(0).toUpperCase()+cat.slice(1)}s (${groupEmails.length})
+            ${cat.charAt(0).toUpperCase() + cat.slice(1)}s (${groupEmails.length})
           </div>`
         groupEmails.forEach(email => { html += renderEmailCard(email) })
       })
@@ -356,7 +359,7 @@ function renderEmailCard(email) {
       box-shadow:0 1px 3px rgba(0,0,0,0.05);">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.3rem;">
         <div style="font-weight:bold;font-size:0.82rem;color:#1e293b;flex:1;padding-right:0.5rem;">
-          ${categoryEmoji[email.category]} ${email.subject}
+          ${email.subject}
         </div>
         <button data-pin="${email.id}" style="
           background:${pinned ? '#fef3c7' : '#f1f5f9'};
@@ -370,7 +373,7 @@ function renderEmailCard(email) {
         <span style="background:${categoryColor[email.category]}15;color:${categoryColor[email.category]};padding:0.1rem 0.35rem;border-radius:3px;font-weight:bold;font-size:0.62rem;">${email.category.toUpperCase()}</span>
         <span style="color:#d97706;">⭐ ${email.importance_score}/10</span>
         ${email.action_required ? '<span style="background:#fee2e2;color:#dc2626;padding:0.1rem 0.35rem;border-radius:3px;font-weight:bold;font-size:0.62rem;">⚡ ACTION</span>' : ''}
-        <span style="color:#94a3b8;">${new Date(email.date).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
+        <span style="color:#94a3b8;">${new Date(email.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
       </div>
       <div style="background:#f1f5f9;border-radius:6px;padding:0.5rem 0.6rem;margin-bottom:0.5rem;font-size:0.78rem;color:#475569;line-height:1.6;">
         <div style="color:#6366f1;font-weight:bold;font-size:0.65rem;margin-bottom:0.3rem;">AI SUMMARY</div>
@@ -378,9 +381,9 @@ function renderEmailCard(email) {
       </div>
       <div style="display:flex;gap:0.4rem;">
         <a href="https://mail.google.com/mail/u/0/#inbox/${email.threadId}" target="_blank"
-          style="padding:0.25rem 0.6rem;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;border-radius:5px;font-size:0.7rem;text-decoration:none;"> Open</a>
-        <a href="https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(replyTo)}&su=${encodeURIComponent('Re: '+email.subject)}" target="_blank"
-          style="padding:0.25rem 0.6rem;background:#6366f1;color:white;border:none;border-radius:5px;font-size:0.7rem;text-decoration:none;">↩ Reply</a>
+          style="padding:0.25rem 0.6rem;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;border-radius:5px;font-size:0.7rem;text-decoration:none;">👁️ Open</a>
+        <a href="https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(replyTo)}&su=${encodeURIComponent('Re: ' + email.subject)}" target="_blank"
+          style="padding:0.25rem 0.6rem;background:#6366f1;color:white;border:none;border-radius:5px;font-size:0.7rem;text-decoration:none;">↩️ Reply</a>
       </div>
     </div>`
 }
@@ -448,7 +451,7 @@ async function fetchEmails() {
 
   contentEl.innerHTML = `
     <div style="text-align:center;padding:2rem;color:#64748b;">
-      <div style="font-size:2rem;margin-bottom:0.5rem;"></div>
+      <div style="font-size:2rem;margin-bottom:0.5rem;">🤖</div>
       <p style="font-size:0.85rem;">AI is reading your emails...</p>
       <p style="font-size:0.72rem;margin-top:0.3rem;color:#94a3b8;">This may take 20-40 seconds</p>
     </div>`
