@@ -14,10 +14,13 @@ export async function GET(request: Request) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         cookies: {
-          getAll() { return cookieStore.getAll() },
+          getAll() {
+            return cookieStore.getAll()
+          },
           setAll(cookiesToSet) {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options))
+              cookieStore.set(name, value, options)
+            )
           },
         },
       }
@@ -29,12 +32,18 @@ export async function GET(request: Request) {
       const { data: { session } } = await supabase.auth.getSession()
 
       if (session) {
-        await supabase.from('gmail_connections').upsert({
-          user_id: session.user.id,
-          access_token: session.provider_token,
-          refresh_token: session.provider_refresh_token,
-        }, { onConflict: 'user_id' })
+        // Save Gmail access token + refresh token to our database
+        await supabase.from('gmail_connections').upsert(
+          {
+            user_id: session.user.id,
+            access_token: session.provider_token,
+            refresh_token: session.provider_refresh_token,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id' }
+        )
 
+        // If login came from the Chrome extension popup, redirect to extension-auth page
         if (isPopup) {
           const token = session.access_token
           return NextResponse.redirect(`${origin}/extension-auth?token=${token}`)

@@ -121,6 +121,7 @@ function isPromo(from: string, subject: string): boolean {
 }
 
 export async function GET(request: Request) {
+  // ─── Step 1: Authenticate the user ───────────────────────────────────────
   const authHeader = request.headers.get('Authorization')
   const bearerToken = authHeader?.replace('Bearer ', '')
 
@@ -156,9 +157,13 @@ export async function GET(request: Request) {
   }
 
   if (!userId) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401, headers: corsHeaders })
+    return NextResponse.json(
+      { error: 'Not authenticated' },
+      { status: 401, headers: corsHeaders }
+    )
   }
 
+  // ─── Step 2: Get Gmail tokens from database ───────────────────────────────
   const adminClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -173,9 +178,13 @@ export async function GET(request: Request) {
   console.log('Gmail conn found:', !!conn, 'error:', connError?.message)
 
   if (!conn) {
-    return NextResponse.json({ error: 'Gmail not connected' }, { status: 401, headers: corsHeaders })
+    return NextResponse.json(
+      { error: 'Gmail not connected' },
+      { status: 401, headers: corsHeaders }
+    )
   }
 
+  // ─── Step 3: Set up Gmail API client ─────────────────────────────────────
   const auth = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
@@ -187,32 +196,43 @@ export async function GET(request: Request) {
 
   const gmail = google.gmail({ version: 'v1', auth })
 
+  // ─── Step 4: Build the date filter ───────────────────────────────────────
+  // dateParam comes from the Chrome extension as "YYYY-MM-DD" in the user's local time
+  // Gmail's after: and before: operators ONLY accept YYYY/MM/DD format (NOT unix timestamps)
   const url = new URL(request.url)
   const dateParam = url.searchParams.get('date')
 
-  const targetDate = dateParam ? new Date(dateParam) : new Date()
-  const istOffset = 5.5 * 60 * 60 * 1000
-  const istDate = new Date(targetDate.getTime() + istOffset)
-  const startOfDayIST = new Date(Date.UTC(
-    istDate.getUTCFullYear(),
-    istDate.getUTCMonth(),
-    istDate.getUTCDate(),
-    0, 0, 0
-  ) - istOffset)
-  const endOfDayIST = new Date(startOfDayIST.getTime() + 24 * 60 * 60 * 1000)
-  const unixStart = Math.floor(startOfDayIST.getTime() / 1000)
-  const unixEnd = Math.floor(endOfDayIST.getTime() / 1000)
+  // Use the date from the extension, or fall back to today's UTC date
+  const dateStr = dateParam || new Date().toISOString().split('T')[0]
+  // dateStr is now guaranteed to be "YYYY-MM-DD"
 
+  const [year, month, day] = dateStr.split('-')
+
+  // Calculate the NEXT day for the "before:" boundary
+  const currentDate = new Date(`${dateStr}T00:00:00Z`)
+  currentDate.setUTCDate(currentDate.getUTCDate() + 1)
+  const nextYear = currentDate.getUTCFullYear()
+  const nextMonth = String(currentDate.getUTCMonth() + 1).padStart(2, '0')
+  const nextDay = String(currentDate.getUTCDate()).padStart(2, '0')
+
+  // Gmail query using correct YYYY/MM/DD format
+  const gmailQuery = `in:inbox after:${year}/${month}/${day} before:${nextYear}/${nextMonth}/${nextDay} -category:promotions -category:social`
+
+  console.log('Gmail query:', gmailQuery)
+  console.log('Searching for date:', dateStr)
+
+  // ─── Step 5: Fetch emails from Gmail ─────────────────────────────────────
   const response = await gmail.users.messages.list({
     userId: 'me',
     maxResults: 50,
-    q: `in:inbox after:${unixStart} before:${unixEnd} -category:promotions -category:social`,
+    q: gmailQuery,
   })
 
   console.log('Messages found:', response.data.messages?.length || 0)
 
   const messages = response.data.messages || []
 
+  // ─── Step 6: Get full email details + AI summaries ────────────────────────
   const emailResults = await Promise.all(
     messages.map(async (msg) => {
       const detail = await gmail.users.messages.get({
@@ -233,6 +253,7 @@ export async function GET(request: Request) {
       const snippet = detail.data.snippet || ''
       const threadId = detail.data.threadId || ''
 
+      // Skip obvious promo emails without using AI (saves API calls)
       if (isPromo(from, subject)) {
         console.log('Skipping promo:', subject)
         return null
@@ -255,10 +276,11 @@ export async function GET(request: Request) {
     })
   )
 
+  // ─── Step 7: Filter, sort by importance, return top 10 ───────────────────
   const top10 = emailResults
-  .filter(e => e !== null && e.category !== 'promo')
-  .sort((a, b) => b!.importance_score - a!.importance_score)
-  .slice(0, 10)
+    .filter(e => e !== null && e.category !== 'promo')
+    .sort((a, b) => b!.importance_score - a!.importance_score)
+    .slice(0, 10)
 
   return NextResponse.json({ emails: top10 }, { headers: corsHeaders })
 }
