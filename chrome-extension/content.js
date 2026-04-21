@@ -11,9 +11,11 @@ let timeFrom = '00:00'
 let timeTo = '23:59'
 let activeView = 'emails'
 
-const categoryEmoji = { meeting: '📅', task: '✅', promo: '🏷️', personal: '👤', other: '📧' }
-const categoryColor = { meeting: '#2563eb', task: '#7c3aed', promo: '#d97706', personal: '#db2777', other: '#475569' }
+const categoryColor = { meeting: '#2563eb', task: '#7c3aed', personal: '#db2777', other: '#475569' }
 const priorityColor = { high: '#dc2626', medium: '#d97706', low: '#16a34a' }
+
+// Category sort order: meeting first, then task, personal, other
+const categoryOrder = { meeting: 1, task: 2, personal: 3, other: 4 }
 
 chrome.storage.local.get(['ed_token', 'ed_pinned'], (result) => {
   if (result.ed_token) savedToken = result.ed_token
@@ -62,7 +64,7 @@ function showLoginScreen() {
         <button id="ed-done-btn" style="
           background:#16a34a;color:white;border:none;border-radius:10px;
           padding:0.75rem 1.5rem;cursor:pointer;font-size:0.9rem;font-weight:600;width:100%;
-        ">✅ Done! Load My Emails</button>
+        "> Done! Load My Emails</button>
       </div>
     `
     window.open(`${SITE_URL}/popup`, '_blank')
@@ -85,9 +87,7 @@ function getFilteredByTime(emails) {
     const emailTime = new Date(email.date)
     const [fromH, fromM] = timeFrom.split(':').map(Number)
     const [toH, toM] = timeTo.split(':').map(Number)
-    const emailH = emailTime.getHours()
-    const emailMin = emailTime.getMinutes()
-    const emailMins = emailH * 60 + emailMin
+    const emailMins = emailTime.getHours() * 60 + emailTime.getMinutes()
     const fromMins = fromH * 60 + fromM
     const toMins = toH * 60 + toM
     return emailMins >= fromMins && emailMins <= toMins
@@ -107,6 +107,18 @@ function togglePin(email) {
 
 function isPinned(emailId) {
   return pinnedEmails.some(p => p.id === emailId)
+}
+
+// ── MAIN SORT FUNCTION ──────────────────────────────────────────────────────
+// Order: Meetings → Tasks → Personal → Other
+// Within each category, sort by importance_score descending
+function sortEmails(emails) {
+  return [...emails].sort((a, b) => {
+    const catA = categoryOrder[a.category] || 99
+    const catB = categoryOrder[b.category] || 99
+    if (catA !== catB) return catA - catB
+    return b.importance_score - a.importance_score
+  })
 }
 
 function renderToolbar() {
@@ -170,8 +182,9 @@ function renderEmails() {
     if (pinnedEmails.length === 0) {
       html += `<div style="text-align:center;padding:2rem;color:#64748b;font-size:0.82rem;">No pinned emails yet.<br>Click 🔘 on any email to pin it.</div>`
     } else {
+      const sortedPinned = sortEmails(pinnedEmails)
       html += `<div style="padding:0.75rem;">`
-      pinnedEmails.forEach(email => { html += renderEmailCard(email) })
+      sortedPinned.forEach(email => { html += renderEmailCard(email) })
       html += `</div>`
     }
     contentEl.innerHTML = html
@@ -183,11 +196,21 @@ function renderEmails() {
   const timeFiltered = getFilteredByTime(emailsData)
   const categories = ['all', 'meeting', 'task', 'personal', 'other']
   const count = cat => cat === 'all' ? timeFiltered.length : timeFiltered.filter(e => e.category === cat).length
-  const filtered = activeCategory === 'all' ? timeFiltered : timeFiltered.filter(e => e.category === activeCategory)
-  const urgentEmails = timeFiltered.filter(e => e.action_required || e.importance_score >= 8)
+
+  // Apply category filter
+  const categoryFiltered = activeCategory === 'all'
+    ? timeFiltered
+    : timeFiltered.filter(e => e.category === activeCategory)
+
+  // ── Apply the category-priority sort ──
+  const filtered = sortEmails(categoryFiltered)
+
+  // Urgent = action required OR importance >= 8 (shown for ALL dates, not just today)
+  const urgentEmails = sortEmails(timeFiltered.filter(e => e.action_required || e.importance_score >= 8))
 
   let html = toolbar
 
+  // ── Category filter buttons ──
   html += `<div style="display:flex;gap:0.3rem;flex-wrap:wrap;padding:0.5rem 0.75rem;background:#fff;border-bottom:1px solid #e2e8f0;">`
   categories.forEach(cat => {
     html += `<button data-cat="${cat}" style="
@@ -202,30 +225,56 @@ function renderEmails() {
 
   html += `<div style="padding:0.75rem;">`
 
+  // ── Urgent Action Needed banner (shows for ALL dates if there are urgent emails) ──
   if (urgentEmails.length > 0 && activeCategory === 'all') {
-    html += `<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:0.6rem;margin-bottom:0.75rem;">
-      <div style="font-size:0.7rem;font-weight:bold;color:#dc2626;margin-bottom:0.4rem;">🚨 URGENT ACTION NEEDED</div>`
+    html += `
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:0.75rem;margin-bottom:0.75rem;">
+        <div style="font-size:0.72rem;font-weight:bold;color:#dc2626;margin-bottom:0.5rem;">
+          🚨 URGENT ACTION NEEDED (${urgentEmails.length})
+        </div>`
     urgentEmails.forEach(e => {
       html += `
         <a href="https://mail.google.com/mail/u/0/#inbox/${e.threadId}" target="_blank" style="
-          display:block;
+          display:flex;align-items:center;gap:0.4rem;
           font-size:0.72rem;color:#b91c1c;
-          padding:0.3rem 0.4rem;
-          border-bottom:1px solid #fecaca;
-          text-decoration:none;
-          border-radius:4px;
-          cursor:pointer;
+          padding:0.3rem 0.4rem;border-bottom:1px solid #fecaca;
+          text-decoration:none;border-radius:4px;
         " onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='transparent'">
-          🔴 ${e.subject.slice(0,50)}${e.subject.length>50?'...':''}
+          🔴 <span style="flex:1;">${e.subject.slice(0,55)}${e.subject.length>55?'...':''}</span>
+          <span style="font-size:0.65rem;color:#9ca3af;white-space:nowrap;">${categoryEmoji[e.category]} ${e.category}</span>
         </a>`
     })
     html += `</div>`
   }
 
+  // ── No emails message ──
   if (filtered.length === 0) {
-    html += `<p style="text-align:center;color:#64748b;font-size:0.82rem;padding:2rem;">No emails found for this time range.</p>`
+    html += `
+      <div style="text-align:center;padding:2rem;color:#64748b;">
+        <div style="font-size:2rem;margin-bottom:0.5rem;">📭</div>
+        <p style="font-size:0.82rem;">No ${activeCategory === 'all' ? '' : activeCategory + ' '}emails found for ${selectedDate}.</p>
+      </div>`
   } else {
-    filtered.forEach(email => { html += renderEmailCard(email) })
+    // ── Render emails grouped by category when viewing "all" ──
+    if (activeCategory === 'all') {
+      const groups = ['meeting', 'task', 'personal', 'other']
+      groups.forEach(cat => {
+        const groupEmails = filtered.filter(e => e.category === cat)
+        if (groupEmails.length === 0) return
+        html += `
+          <div style="
+            font-size:0.68rem;font-weight:700;color:${categoryColor[cat]};
+            text-transform:uppercase;letter-spacing:0.05em;
+            padding:0.3rem 0.2rem;margin-bottom:0.4rem;margin-top:0.2rem;
+            border-bottom:2px solid ${categoryColor[cat]}30;
+          ">
+            ${categoryEmoji[cat]} ${cat.charAt(0).toUpperCase()+cat.slice(1)}s (${groupEmails.length})
+          </div>`
+        groupEmails.forEach(email => { html += renderEmailCard(email) })
+      })
+    } else {
+      filtered.forEach(email => { html += renderEmailCard(email) })
+    }
   }
 
   html += `</div>`
@@ -239,7 +288,7 @@ function renderEmailCard(email) {
   const pinned = isPinned(email.id)
   return `
     <div style="background:#fff;border-radius:10px;padding:0.75rem 1rem;margin-bottom:0.75rem;
-      border:1px solid #e2e8f0;border-left:3px solid ${priorityColor[email.priority]};
+      border:1px solid #e2e8f0;border-left:3px solid ${categoryColor[email.category] || '#475569'};
       box-shadow:0 1px 3px rgba(0,0,0,0.05);">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.3rem;">
         <div style="font-weight:bold;font-size:0.82rem;color:#1e293b;flex:1;padding-right:0.5rem;">
@@ -254,19 +303,20 @@ function renderEmailCard(email) {
       </div>
       <div style="font-size:0.7rem;color:#64748b;margin-bottom:0.4rem;display:flex;flex-wrap:wrap;gap:0.3rem;align-items:center;">
         <span>${email.from.replace(/<.*>/,'').trim()}</span>
-        <span style="background:${categoryColor[email.category]}15;color:${categoryColor[email.category]};padding:0.1rem 0.35rem;border-radius:3px;font-weight:bold;">${email.category.toUpperCase()}</span>
+        <span style="background:${categoryColor[email.category]}15;color:${categoryColor[email.category]};padding:0.1rem 0.35rem;border-radius:3px;font-weight:bold;font-size:0.62rem;">${email.category.toUpperCase()}</span>
         <span style="color:#d97706;">⭐ ${email.importance_score}/10</span>
+        ${email.action_required ? '<span style="background:#fee2e2;color:#dc2626;padding:0.1rem 0.35rem;border-radius:3px;font-weight:bold;font-size:0.62rem;">⚡ ACTION</span>' : ''}
         <span style="color:#94a3b8;">${new Date(email.date).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
       </div>
       <div style="background:#f1f5f9;border-radius:6px;padding:0.5rem 0.6rem;margin-bottom:0.5rem;font-size:0.78rem;color:#475569;line-height:1.6;">
-  <div style="color:#6366f1;font-weight:bold;font-size:0.65rem;margin-bottom:0.3rem;">AI SUMMARY</div>
-  <div>${email.summary}</div>
-</div>
+        <div style="color:#6366f1;font-weight:bold;font-size:0.65rem;margin-bottom:0.3rem;">AI SUMMARY</div>
+        <div>${email.summary}</div>
+      </div>
       <div style="display:flex;gap:0.4rem;">
         <a href="https://mail.google.com/mail/u/0/#inbox/${email.threadId}" target="_blank"
-          style="padding:0.25rem 0.6rem;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;border-radius:5px;font-size:0.7rem;text-decoration:none;">👁️ Open</a>
+          style="padding:0.25rem 0.6rem;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;border-radius:5px;font-size:0.7rem;text-decoration:none;"> Open</a>
         <a href="https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(replyTo)}&su=${encodeURIComponent('Re: '+email.subject)}" target="_blank"
-          style="padding:0.25rem 0.6rem;background:#6366f1;color:white;border:none;border-radius:5px;font-size:0.7rem;text-decoration:none;">↩️ Reply</a>
+          style="padding:0.25rem 0.6rem;background:#6366f1;color:white;border:none;border-radius:5px;font-size:0.7rem;text-decoration:none;"> Reply</a>
       </div>
     </div>`
 }
@@ -334,7 +384,7 @@ async function fetchEmails() {
 
   contentEl.innerHTML = `
     <div style="text-align:center;padding:2rem;color:#64748b;">
-      <div style="font-size:2rem;margin-bottom:0.5rem;">🤖</div>
+      <div style="font-size:2rem;margin-bottom:0.5rem;"></div>
       <p style="font-size:0.85rem;">AI is reading your emails...</p>
       <p style="font-size:0.72rem;margin-top:0.3rem;color:#94a3b8;">This may take 20-40 seconds</p>
     </div>`
@@ -359,6 +409,7 @@ async function fetchEmails() {
         <div style="text-align:center;padding:2rem;color:#64748b;">
           <div style="font-size:2rem;margin-bottom:0.5rem;">📭</div>
           <p style="font-size:0.85rem;">No emails found for ${selectedDate}.</p>
+          <p style="font-size:0.75rem;color:#94a3b8;margin-top:0.5rem;">Try a different date or check your Gmail inbox.</p>
         </div>`
       return
     }
@@ -367,6 +418,7 @@ async function fetchEmails() {
     renderEmails()
 
   } catch (err) {
+    console.error('EmailDigest fetch error:', err)
     savedToken = null
     chrome.storage.local.remove(['ed_token'])
     showLoginScreen()
