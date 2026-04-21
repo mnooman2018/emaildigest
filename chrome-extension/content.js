@@ -13,8 +13,6 @@ let activeView = 'emails'
 
 const categoryColor = { meeting: '#2563eb', task: '#7c3aed', personal: '#db2777', other: '#475569' }
 const priorityColor = { high: '#dc2626', medium: '#d97706', low: '#16a34a' }
-
-// Category sort order: meeting first, then task, personal, other
 const categoryOrder = { meeting: 1, task: 2, personal: 3, other: 4 }
 
 chrome.storage.local.get(['ed_token', 'ed_pinned'], (result) => {
@@ -34,7 +32,16 @@ function envelopeIcon() {
   </svg>`
 }
 
+// ── Hide/show header buttons depending on login state ──────────────────────
+function setHeaderButtons(loggedIn) {
+  const refreshBtn = document.getElementById('ed-refresh')
+  const logoutBtn = document.getElementById('ed-logout')
+  if (refreshBtn) refreshBtn.style.display = loggedIn ? 'inline-block' : 'none'
+  if (logoutBtn) logoutBtn.style.display = loggedIn ? 'inline-block' : 'none'
+}
+
 function showLoginScreen() {
+  setHeaderButtons(false) // hide Logout + Refresh on login screen
   const contentEl = document.getElementById('ed-content')
   if (!contentEl) return
   contentEl.innerHTML = `
@@ -60,24 +67,90 @@ function showLoginScreen() {
       <div style="text-align:center;padding:2rem;color:#64748b;">
         <div style="font-size:2.5rem;margin-bottom:1rem;">⏳</div>
         <p style="font-size:0.9rem;font-weight:600;color:#1e293b;margin-bottom:0.5rem;">Opening Google login...</p>
-        <p style="font-size:0.75rem;color:#94a3b8;line-height:1.6;margin-bottom:1.5rem;">Complete the login in the new tab.<br>Then click the button below.</p>
+        <p style="font-size:0.75rem;color:#94a3b8;line-height:1.6;margin-bottom:1.5rem;">
+          1️⃣ Sign in with Google in the new tab<br>
+          2️⃣ Wait for the ✅ success screen<br>
+          3️⃣ Come back here and click the button below
+        </p>
         <button id="ed-done-btn" style="
           background:#16a34a;color:white;border:none;border-radius:10px;
           padding:0.75rem 1.5rem;cursor:pointer;font-size:0.9rem;font-weight:600;width:100%;
-        "> Done! Load My Emails</button>
+          margin-bottom:0.75rem;
+        ">✅ Done! Load My Emails</button>
+        <button id="ed-cancel-btn" style="
+          background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0;border-radius:10px;
+          padding:0.5rem 1.5rem;cursor:pointer;font-size:0.82rem;width:100%;
+        ">← Cancel</button>
       </div>
     `
+
+    // Open the login popup
     window.open(`${SITE_URL}/popup`, '_blank')
+
+    document.getElementById('ed-cancel-btn').addEventListener('click', () => {
+      showLoginScreen()
+    })
+
     document.getElementById('ed-done-btn').addEventListener('click', async () => {
-      chrome.storage.local.get(['ed_token'], async (result) => {
+      // Show checking spinner
+      document.getElementById('ed-done-btn').textContent = '⏳ Checking...'
+      document.getElementById('ed-done-btn').disabled = true
+
+      // Poll chrome.storage up to 10 times (5 seconds) waiting for token
+      let token = null
+      for (let i = 0; i < 10; i++) {
+        const result = await new Promise(resolve =>
+          chrome.storage.local.get(['ed_token'], resolve)
+        )
         if (result.ed_token) {
-          savedToken = result.ed_token
-          emailsData = []
-          await fetchEmails()
-        } else {
-          showLoginScreen()
+          token = result.ed_token
+          break
         }
-      })
+        await new Promise(r => setTimeout(r, 500))
+      }
+
+      if (token) {
+        savedToken = token
+        emailsData = []
+        setHeaderButtons(true) // show Logout + Refresh now
+        await fetchEmails()
+      } else {
+        // Token not found — show helpful message
+        document.getElementById('ed-content').innerHTML = `
+          <div style="text-align:center;padding:2rem;color:#64748b;">
+            <div style="font-size:2.5rem;margin-bottom:1rem;">⚠️</div>
+            <p style="font-size:0.9rem;font-weight:600;color:#dc2626;margin-bottom:0.5rem;">Token not saved yet</p>
+            <p style="font-size:0.78rem;color:#64748b;line-height:1.6;margin-bottom:1.5rem;">
+              Make sure you completed login and saw the ✅ screen.<br>Then try again.
+            </p>
+            <button id="ed-retry-btn" style="
+              background:#6366f1;color:white;border:none;border-radius:10px;
+              padding:0.75rem 1.5rem;cursor:pointer;font-size:0.9rem;font-weight:600;width:100%;
+              margin-bottom:0.75rem;
+            ">🔄 Try Again</button>
+            <button id="ed-back-btn" style="
+              background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0;border-radius:10px;
+              padding:0.5rem 1.5rem;cursor:pointer;font-size:0.82rem;width:100%;
+            ">← Back to Login</button>
+          </div>
+        `
+        document.getElementById('ed-retry-btn').addEventListener('click', async () => {
+          const result = await new Promise(resolve =>
+            chrome.storage.local.get(['ed_token'], resolve)
+          )
+          if (result.ed_token) {
+            savedToken = result.ed_token
+            emailsData = []
+            setHeaderButtons(true)
+            await fetchEmails()
+          } else {
+            showLoginScreen()
+          }
+        })
+        document.getElementById('ed-back-btn').addEventListener('click', () => {
+          showLoginScreen()
+        })
+      }
     })
   })
 }
@@ -109,9 +182,6 @@ function isPinned(emailId) {
   return pinnedEmails.some(p => p.id === emailId)
 }
 
-// ── MAIN SORT FUNCTION ──────────────────────────────────────────────────────
-// Order: Meetings → Tasks → Personal → Other
-// Within each category, sort by importance_score descending
 function sortEmails(emails) {
   return [...emails].sort((a, b) => {
     const catA = categoryOrder[a.category] || 99
@@ -175,6 +245,8 @@ function renderEmails() {
   const contentEl = document.getElementById('ed-content')
   if (!contentEl) return
 
+  setHeaderButtons(true) // make sure buttons are visible when emails are shown
+
   const toolbar = renderToolbar()
 
   if (activeView === 'pinned') {
@@ -197,20 +269,15 @@ function renderEmails() {
   const categories = ['all', 'meeting', 'task', 'personal', 'other']
   const count = cat => cat === 'all' ? timeFiltered.length : timeFiltered.filter(e => e.category === cat).length
 
-  // Apply category filter
   const categoryFiltered = activeCategory === 'all'
     ? timeFiltered
     : timeFiltered.filter(e => e.category === activeCategory)
 
-  // ── Apply the category-priority sort ──
   const filtered = sortEmails(categoryFiltered)
-
-  // Urgent = action required OR importance >= 8 (shown for ALL dates, not just today)
   const urgentEmails = sortEmails(timeFiltered.filter(e => e.action_required || e.importance_score >= 8))
 
   let html = toolbar
 
-  // ── Category filter buttons ──
   html += `<div style="display:flex;gap:0.3rem;flex-wrap:wrap;padding:0.5rem 0.75rem;background:#fff;border-bottom:1px solid #e2e8f0;">`
   categories.forEach(cat => {
     html += `<button data-cat="${cat}" style="
@@ -225,7 +292,6 @@ function renderEmails() {
 
   html += `<div style="padding:0.75rem;">`
 
-  // ── Urgent Action Needed banner (shows for ALL dates if there are urgent emails) ──
   if (urgentEmails.length > 0 && activeCategory === 'all') {
     html += `
       <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:0.75rem;margin-bottom:0.75rem;">
@@ -247,7 +313,6 @@ function renderEmails() {
     html += `</div>`
   }
 
-  // ── No emails message ──
   if (filtered.length === 0) {
     html += `
       <div style="text-align:center;padding:2rem;color:#64748b;">
@@ -255,7 +320,6 @@ function renderEmails() {
         <p style="font-size:0.82rem;">No ${activeCategory === 'all' ? '' : activeCategory + ' '}emails found for ${selectedDate}.</p>
       </div>`
   } else {
-    // ── Render emails grouped by category when viewing "all" ──
     if (activeCategory === 'all') {
       const groups = ['meeting', 'task', 'personal', 'other']
       groups.forEach(cat => {
@@ -316,7 +380,7 @@ function renderEmailCard(email) {
         <a href="https://mail.google.com/mail/u/0/#inbox/${email.threadId}" target="_blank"
           style="padding:0.25rem 0.6rem;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;border-radius:5px;font-size:0.7rem;text-decoration:none;"> Open</a>
         <a href="https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(replyTo)}&su=${encodeURIComponent('Re: '+email.subject)}" target="_blank"
-          style="padding:0.25rem 0.6rem;background:#6366f1;color:white;border:none;border-radius:5px;font-size:0.7rem;text-decoration:none;"> Reply</a>
+          style="padding:0.25rem 0.6rem;background:#6366f1;color:white;border:none;border-radius:5px;font-size:0.7rem;text-decoration:none;">↩ Reply</a>
       </div>
     </div>`
 }
@@ -472,8 +536,8 @@ function createPanel() {
     </svg>
     <div style="display:flex;gap:0.5rem;align-items:center;">
       <button id="ed-maximize" style="background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:0.2rem 0.5rem;cursor:pointer;font-size:0.75rem;color:#475569;">⛶ Full</button>
-      <button id="ed-refresh" style="background:#6366f1;border:none;border-radius:6px;padding:0.2rem 0.5rem;cursor:pointer;font-size:0.75rem;color:white;">🔄</button>
-      <button id="ed-logout" style="background:#fee2e2;border:1px solid #fecaca;border-radius:6px;padding:0.2rem 0.5rem;cursor:pointer;font-size:0.72rem;color:#dc2626;">Logout</button>
+      <button id="ed-refresh" style="display:none;background:#6366f1;border:none;border-radius:6px;padding:0.2rem 0.5rem;cursor:pointer;font-size:0.75rem;color:white;">🔄</button>
+      <button id="ed-logout" style="display:none;background:#fee2e2;border:1px solid #fecaca;border-radius:6px;padding:0.2rem 0.5rem;cursor:pointer;font-size:0.72rem;color:#dc2626;">Logout</button>
       <button id="ed-close" style="background:none;border:none;cursor:pointer;font-size:1.1rem;color:#94a3b8;">✕</button>
     </div>
   `
@@ -538,6 +602,14 @@ function createPanel() {
       document.getElementById('ed-maximize').textContent = '⛶ Full'
       toggleBtn.style.display = 'flex'
       toggleBtn.style.right = '400px'
+    }
+  })
+
+  // Check if already logged in on load
+  chrome.storage.local.get(['ed_token'], (result) => {
+    if (result.ed_token) {
+      savedToken = result.ed_token
+      setHeaderButtons(true)
     }
   })
 }

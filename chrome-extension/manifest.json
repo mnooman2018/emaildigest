@@ -1,11 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "EmailDigest AI",
+  "name": "EmailDigest",
   "version": "1.0",
-  "description": "AI-powered email summaries inside Gmail",
   "permissions": [
-    "activeTab",
     "storage",
+    "scripting",
     "tabs"
   ],
   "host_permissions": [
@@ -18,15 +17,7 @@
   "content_scripts": [
     {
       "matches": ["https://mail.google.com/*"],
-      "js": ["content.js"],
-      "css": ["styles.css"]
-    },
-    {
-      "matches": ["https://emaildigest-kappa.vercel.app/*"],
-      "js": ["auth-listener.js"]
+      "js": ["content.js"]
     }
-  ],
-  "action": {
-    "default_popup": "popup.html"
-  }
+  ]
 }
