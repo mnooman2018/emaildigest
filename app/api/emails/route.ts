@@ -28,16 +28,20 @@ async function summarizeEmail(subject: string, from: string, body: string) {
 
     const { text } = await generateText({
       model: groq('llama-3.3-70b-versatile'),
-      prompt: `You are an expert email analyst. Analyze this email and respond with ONLY a valid JSON object.
+      prompt: `You are an expert email analyst for a corporate professional. Analyze this email and respond with ONLY a valid JSON object.
 
-CATEGORIZATION RULES (be very strict):
-- "promo" = ANY marketing, advertisement, investment advice, mutual funds, insurance, sales pitch, newsletter, job alerts from companies, brand emails, app notifications, subscription offers, "invest in", "earn money", "limited offer" — BE AGGRESSIVE about labeling these as promo
-- "meeting" = calendar invite, Google Meet/Zoom/Teams link, interview scheduled, meeting request
-- "task" = system alert, approval needed, deadline, form submission, action required, bug report
-- "personal" = a real human writing directly to you from their personal email
-- "other" = bank statements, OTP, receipts, delivery updates, account notifications
+CATEGORIZATION RULES:
+- "meeting" = calendar invite, Google Meet/Zoom/Teams link, interview scheduled, meeting request, spreadsheet/doc shared for collaboration
+- "task" = approval needed, deadline, form submission, action required, bug report, system alert, OTP, verification code, account action needed
+- "personal" = a real human writing directly to you personally
+- "other" = bank statements, receipts, delivery updates, account notifications, statements, equity reports
 
-IMPORTANT: If the email is trying to sell you something, promote a product/service, or is from a company's marketing team — it is ALWAYS "promo" regardless of how it's worded.
+IMPORTANCE SCORE RULES (1-10):
+- 9-10 = Meetings, interviews, urgent deadlines, OTP/verification needed NOW
+- 7-8 = Tasks requiring action, personal emails from real people, delivery updates
+- 5-6 = Bank statements, account notifications, equity reports
+- 3-4 = General updates, newsletters from known services
+- 1-2 = Pure promotional content (should rarely appear)
 
 Subject: ${subject}
 From: ${from}
@@ -102,29 +106,77 @@ function isPromo(from: string, subject: string): boolean {
   const f = from.toLowerCase()
   const s = subject.toLowerCase()
 
+  // ✅ NEVER block these — always important
+  const alwaysAllow = [
+    'google.com',
+    'googleusercontent.com',
+    'accounts.google.com',
+    'drive.google.com',
+    'calendar.google.com',
+    'github.com',
+    'linkedin.com',        // real connection messages (not job alerts)
+    'hdfc',
+    'hdfcbank',
+    'icici',
+    'sbi',
+    'axis',
+    'kotak',
+    'amazon',              // delivery updates
+    'flipkart',            // delivery updates
+    'swiggy',
+    'zomato',
+    'dunzo',
+    'blinkit',
+    'zepto',
+    'ola',
+    'uber',
+    'irctc',
+    'noreply@accounts.google',
+    'noreply@google',
+  ]
+  if (alwaysAllow.some(k => f.includes(k))) return false
+
+  // ✅ Always allow OTP / verification / delivery emails by subject
+  const alwaysAllowSubjects = [
+    'otp', 'one time password', 'verification code', 'verify',
+    'your order', 'order confirmed', 'order shipped', 'out for delivery',
+    'delivered', 'payment confirmed', 'payment receipt',
+    'invoice', 'ticket', 'booking confirmed',
+    'shared with you',      // Google Drive/Docs shares
+    'invited you',          // Google Meet / Calendar invites
+    'has shared',
+    'spreadsheet',
+    'document',
+    'statement',            // bank statements
+    'account statement',
+  ]
+  if (alwaysAllowSubjects.some(k => s.includes(k))) return false
+
+  // ❌ Block pure marketing / bulk senders
   const bulkSenders = [
-    'noreply@', 'no-reply@', 'donotreply@',
     'newsletter@', 'marketing@', 'offers@',
-    'promotions@', 'campaigns@',
+    'promotions@', 'campaigns@', 'noreply@mailchimp',
     'sendgrid', 'mailchimp', 'klaviyo', 'hubspot',
+    'amazonses.com',
   ]
   if (bulkSenders.some(k => f.includes(k))) return true
 
-  const clearPromoSubjects = [
-    '% off', 'flash sale', 'mega sale', 'limited offer',
+  // ❌ Block obvious promo subjects
+  const promoSubjects = [
+    '% off', 'flash sale', 'mega sale', 'limited offer', 'exclusive deal',
     'job alert', 'new jobs match', 'jobs for you',
-    'newsletter', 'weekly digest',
+    'weekly digest', 'unsubscribe',
+    'invest now', 'earn money', 'mutual fund', 'sip now',
   ]
-  if (clearPromoSubjects.some(k => s.includes(k))) return true
+  if (promoSubjects.some(k => s.includes(k))) return true
 
   return false
 }
 
 export async function GET(request: Request) {
-  // ─── Step 1: Authenticate the user ───────────────────────────────────────
+  // ─── Step 1: Authenticate ─────────────────────────────────────────────────
   const authHeader = request.headers.get('Authorization')
   const bearerToken = authHeader?.replace('Bearer ', '')
-
   let userId: string | null = null
 
   if (bearerToken) {
@@ -163,7 +215,7 @@ export async function GET(request: Request) {
     )
   }
 
-  // ─── Step 2: Get Gmail tokens from database ───────────────────────────────
+  // ─── Step 2: Get Gmail tokens ──────────────────────────────────────────────
   const adminClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -184,7 +236,7 @@ export async function GET(request: Request) {
     )
   }
 
-  // ─── Step 3: Set up Gmail API client ─────────────────────────────────────
+  // ─── Step 3: Gmail client ──────────────────────────────────────────────────
   const auth = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
@@ -196,35 +248,28 @@ export async function GET(request: Request) {
 
   const gmail = google.gmail({ version: 'v1', auth })
 
-  // ─── Step 4: Build the date filter ───────────────────────────────────────
-  // dateParam comes from the Chrome extension as "YYYY-MM-DD" in the user's local time
-  // Gmail's after: and before: operators ONLY accept YYYY/MM/DD format (NOT unix timestamps)
+  // ─── Step 4: Date filter ───────────────────────────────────────────────────
   const url = new URL(request.url)
   const dateParam = url.searchParams.get('date')
-
-  // Use the date from the extension, or fall back to today's UTC date
   const dateStr = dateParam || new Date().toISOString().split('T')[0]
-  // dateStr is now guaranteed to be "YYYY-MM-DD"
-
   const [year, month, day] = dateStr.split('-')
 
-  // Calculate the NEXT day for the "before:" boundary
   const currentDate = new Date(`${dateStr}T00:00:00Z`)
   currentDate.setUTCDate(currentDate.getUTCDate() + 1)
   const nextYear = currentDate.getUTCFullYear()
   const nextMonth = String(currentDate.getUTCMonth() + 1).padStart(2, '0')
   const nextDay = String(currentDate.getUTCDate()).padStart(2, '0')
 
-  // Gmail query using correct YYYY/MM/DD format
-  const gmailQuery = `in:inbox after:${year}/${month}/${day} before:${nextYear}/${nextMonth}/${nextDay} -category:promotions -category:social`
+  // Only exclude social tab — keep everything else including promotions tab
+  // so we can manually filter what matters vs pure spam
+  const gmailQuery = `in:inbox after:${year}/${month}/${day} before:${nextYear}/${nextMonth}/${nextDay} -category:social`
 
   console.log('Gmail query:', gmailQuery)
-  console.log('Searching for date:', dateStr)
 
-  // ─── Step 5: Fetch emails from Gmail ─────────────────────────────────────
+  // ─── Step 5: Fetch ALL emails for that date (up to 100) ───────────────────
   const response = await gmail.users.messages.list({
     userId: 'me',
-    maxResults: 50,
+    maxResults: 100,   // ✅ Get all emails, not just 50
     q: gmailQuery,
   })
 
@@ -232,7 +277,7 @@ export async function GET(request: Request) {
 
   const messages = response.data.messages || []
 
-  // ─── Step 6: Get full email details + AI summaries ────────────────────────
+  // ─── Step 6: Get details + AI summaries ───────────────────────────────────
   const emailResults = await Promise.all(
     messages.map(async (msg) => {
       const detail = await gmail.users.messages.get({
@@ -253,13 +298,19 @@ export async function GET(request: Request) {
       const snippet = detail.data.snippet || ''
       const threadId = detail.data.threadId || ''
 
-      // Skip obvious promo emails without using AI (saves API calls)
+      // Skip pure promo emails
       if (isPromo(from, subject)) {
         console.log('Skipping promo:', subject)
         return null
       }
 
       const ai = await summarizeEmail(subject, from, text || snippet)
+
+      // ✅ Skip if AI also rates it as promo or importance <= 2
+      if (ai.category === 'promo' || ai.importance_score <= 2) {
+        console.log('Skipping low importance:', subject, ai.importance_score)
+        return null
+      }
 
       return {
         id: msg.id,
@@ -276,11 +327,13 @@ export async function GET(request: Request) {
     })
   )
 
-  // ─── Step 7: Filter, sort by importance, return top 10 ───────────────────
-  const top10 = emailResults
-    .filter(e => e !== null && e.category !== 'promo')
+  // ─── Step 7: Filter nulls, sort by importance score (10 → 2) ──────────────
+  // ✅ Return ALL emails sorted by importance — no artificial top 10 limit
+  const sortedEmails = emailResults
+    .filter(e => e !== null)
     .sort((a, b) => b!.importance_score - a!.importance_score)
-    .slice(0, 10)
 
-  return NextResponse.json({ emails: top10 }, { headers: corsHeaders })
+  console.log('Final emails returned:', sortedEmails.length)
+
+  return NextResponse.json({ emails: sortedEmails }, { headers: corsHeaders })
 }

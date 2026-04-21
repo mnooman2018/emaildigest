@@ -241,7 +241,6 @@ function renderEmails() {
   if (!contentEl) return
 
   setHeaderButtons(true)
-
   const toolbar = renderToolbar()
 
   if (activeView === 'pinned') {
@@ -270,7 +269,10 @@ function renderEmails() {
     ? timeFiltered
     : timeFiltered.filter(e => e.category === activeCategory)
 
+  // Sort: by category order first, then by importance score within each category
   const filtered = sortEmails(categoryFiltered)
+
+  // Urgent = action required OR importance >= 8
   const urgentEmails = sortEmails(
     timeFiltered.filter(e => e.action_required || e.importance_score >= 8)
   )
@@ -314,12 +316,23 @@ function renderEmails() {
     html += `</div>`
   }
 
+  // ── Email count summary ──
+  if (filtered.length > 0) {
+    html += `
+      <div style="font-size:0.7rem;color:#94a3b8;margin-bottom:0.75rem;text-align:center;">
+        Showing ${filtered.length} email${filtered.length !== 1 ? 's' : ''} — sorted by importance
+      </div>`
+  }
+
   // ── No emails ──
   if (filtered.length === 0) {
     html += `
       <div style="text-align:center;padding:2rem;color:#64748b;">
         <div style="font-size:2rem;margin-bottom:0.5rem;">📭</div>
-        <p style="font-size:0.82rem;">No ${activeCategory === 'all' ? '' : activeCategory + ' '}emails found for ${selectedDate}.</p>
+        <p style="font-size:0.85rem;font-weight:600;color:#1e293b;">No emails found for ${selectedDate}</p>
+        <p style="font-size:0.75rem;color:#94a3b8;margin-top:0.5rem;">
+          All emails were either promotional<br>or below importance threshold.
+        </p>
       </div>`
   } else {
     if (activeCategory === 'all') {
@@ -332,7 +345,7 @@ function renderEmails() {
           <div style="
             font-size:0.68rem;font-weight:700;color:${categoryColor[cat]};
             text-transform:uppercase;letter-spacing:0.05em;
-            padding:0.3rem 0.2rem;margin-bottom:0.4rem;margin-top:0.2rem;
+            padding:0.3rem 0.2rem;margin-bottom:0.4rem;margin-top:0.4rem;
             border-bottom:2px solid ${categoryColor[cat]}30;
           ">
             ${cat.charAt(0).toUpperCase() + cat.slice(1)}s (${groupEmails.length})
@@ -452,8 +465,9 @@ async function fetchEmails() {
   contentEl.innerHTML = `
     <div style="text-align:center;padding:2rem;color:#64748b;">
       <div style="font-size:2rem;margin-bottom:0.5rem;">🤖</div>
-      <p style="font-size:0.85rem;">AI is reading your emails...</p>
-      <p style="font-size:0.72rem;margin-top:0.3rem;color:#94a3b8;">This may take 20-40 seconds</p>
+      <p style="font-size:0.85rem;font-weight:600;color:#1e293b;">AI is reading your emails...</p>
+      <p style="font-size:0.72rem;margin-top:0.3rem;color:#94a3b8;">Fetching all emails for ${selectedDate}</p>
+      <p style="font-size:0.7rem;margin-top:0.2rem;color:#94a3b8;">This may take 30-60 seconds</p>
     </div>`
 
   try {
@@ -475,8 +489,11 @@ async function fetchEmails() {
       contentEl.innerHTML = `
         <div style="text-align:center;padding:2rem;color:#64748b;">
           <div style="font-size:2rem;margin-bottom:0.5rem;">📭</div>
-          <p style="font-size:0.85rem;">No emails found for ${selectedDate}.</p>
-          <p style="font-size:0.75rem;color:#94a3b8;margin-top:0.5rem;">Try a different date or check your Gmail inbox.</p>
+          <p style="font-size:0.85rem;font-weight:600;color:#1e293b;">No important emails for ${selectedDate}</p>
+          <p style="font-size:0.75rem;color:#94a3b8;margin-top:0.5rem;">
+            All emails were promotional or low importance.<br>
+            Try a different date using the date picker.
+          </p>
         </div>`
       return
     }
@@ -608,7 +625,6 @@ function createPanel() {
     }
   })
 
-  // Check if already logged in on load
   chrome.storage.local.get(['ed_token'], (result) => {
     if (result.ed_token) {
       savedToken = result.ed_token
