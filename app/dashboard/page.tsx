@@ -146,7 +146,7 @@ export default function Dashboard() {
   <svg width="200" height="45" viewBox="0 0 680 160" role="img">
     <defs>
       <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#6366f1"/>
+        <stop offset="0%" stopColor="#16a34a"/>
         <stop offset="100%" stopColor="#8b5cf6"/>
       </linearGradient>
       <linearGradient id="pinkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -285,7 +285,7 @@ export default function Dashboard() {
               disabled={emailsLoading}
               style={{
                 padding: '0.6rem 1.4rem',
-                background: '#6366f1',
+                background: '#16a34a',
                 border: 'none',
                 color: 'white', borderRadius: '10px',
                 cursor: 'pointer', fontSize: '0.9rem',
@@ -310,7 +310,7 @@ export default function Dashboard() {
                   cursor: 'pointer',
                   fontSize: '0.8rem',
                   fontWeight: activeCategory === cat ? 'bold' : 'normal',
-                  background: activeCategory === cat ? '#6366f1' : '#ffffff',
+                  background: activeCategory === cat ? '#16a34a' : '#ffffff',
                   color: activeCategory === cat ? 'white' : '#64748b',
                   transition: 'all 0.2s',
                   boxShadow: activeCategory === cat ? '0 2px 8px rgba(99,102,241,0.3)' : 'none',
@@ -395,7 +395,7 @@ export default function Dashboard() {
                   marginBottom: '0.75rem',
                   fontSize: '0.88rem', color: '#475569', lineHeight: '1.5'
                 }}>
-                  <span style={{ color: '#6366f1', fontWeight: 'bold', fontSize: '0.72rem' }}>AI SUMMARY · </span>
+                  <span style={{ color: '#16a34a', fontWeight: 'bold', fontSize: '0.72rem' }}>AI SUMMARY · </span>
                   {email.summary}
                 </div>
 
@@ -418,7 +418,7 @@ export default function Dashboard() {
                     style={{
                       padding: '0.4rem 1rem',
                       background: '#ede9fe',
-                      color: '#6366f1',
+                      color: '#16a34a',
                       border: '1px solid #c7d2fe',
                       borderRadius: '8px', cursor: 'pointer', fontSize: '0.82rem',
                       fontWeight: '500',
@@ -430,7 +430,7 @@ export default function Dashboard() {
                     onClick={() => handleReply(email)}
                     style={{
                       padding: '0.4rem 1rem',
-                      background: '#6366f1',
+                      background: '#16a34a',
                       color: 'white',
                       border: 'none',
                       borderRadius: '8px', cursor: 'pointer', fontSize: '0.82rem',
@@ -479,7 +479,7 @@ export default function Dashboard() {
             <div style={{
               background: '#ede9fe', borderRadius: '8px',
               padding: '0.75rem 1rem', marginBottom: '1rem',
-              color: '#6366f1', fontSize: '0.85rem'
+              color: '#16a34a', fontSize: '0.85rem'
             }}>
               <strong>AI Summary:</strong> {selectedEmail.summary}
             </div>
@@ -507,7 +507,7 @@ export default function Dashboard() {
               onClick={() => handleReply(selectedEmail)}
               style={{
                 width: '100%', padding: '0.75rem',
-                background: '#6366f1',
+                background: '#16a34a',
                 color: 'white', border: 'none',
                 borderRadius: '10px', cursor: 'pointer', fontSize: '0.95rem',
                 fontWeight: '500',
@@ -597,7 +597,7 @@ export default function Dashboard() {
               marginBottom: '1.5rem',
               color: '#1e293b', fontSize: '0.92rem', lineHeight: '1.6'
             }}>
-              <div style={{ fontSize: '0.72rem', color: '#6366f1', fontWeight: 'bold', marginBottom: '0.5rem' }}>AI SUMMARY</div>
+              <div style={{ fontSize: '0.72rem', color: '#16a34a', fontWeight: 'bold', marginBottom: '0.5rem' }}>AI SUMMARY</div>
               {summaryEmail.summary}
             </div>
 
@@ -618,7 +618,7 @@ export default function Dashboard() {
                 onClick={() => handleReply(summaryEmail)}
                 style={{
                   flex: 1, padding: '0.65rem',
-                  background: '#6366f1',
+                  background: '#16a34a',
                   color: 'white', border: 'none',
                   borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem',
                   fontWeight: '500',
