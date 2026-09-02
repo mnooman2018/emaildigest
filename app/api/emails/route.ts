@@ -27,7 +27,7 @@ async function summarizeEmail(subject: string, from: string, body: string) {
       .slice(0, 1500)
 
     const { text } = await generateText({
-      model: groq('llama-3.3-70b-versatile'),
+      model: groq('openai/gpt-oss-120b'),
       prompt: `You are an expert email analyst for a corporate professional. Analyze this email and respond with ONLY a valid JSON object.
 
 CATEGORIZATION RULES:
