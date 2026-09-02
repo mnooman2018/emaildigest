@@ -34,6 +34,7 @@ CATEGORIZATION RULES:
 - "meeting" = calendar invite, Google Meet/Zoom/Teams link, interview scheduled, meeting request, spreadsheet/doc shared for collaboration
 - "task" = approval needed, deadline, form submission, action required, bug report, system alert, OTP, verification code, account action needed
 - "personal" = a real human writing directly to you personally
+- "promo" = marketing, sales, discounts, offers, newsletters, job alerts, product announcements, deals, promotional digests
 - "other" = bank statements, receipts, delivery updates, account notifications, statements, equity reports
 
 IMPORTANCE SCORE RULES (1-10):
@@ -307,7 +308,7 @@ export async function GET(request: Request) {
       const ai = await summarizeEmail(subject, from, text || snippet)
 
       // ✅ Skip if AI also rates it as promo or importance <= 2
-      if (ai.category === 'promo' || ai.importance_score <= 2) {
+      if (ai.importance_score <= 2) {
         console.log('Skipping low importance:', subject, ai.importance_score)
         return null
       }
